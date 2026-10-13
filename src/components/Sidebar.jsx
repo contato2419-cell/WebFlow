@@ -86,7 +86,7 @@ export const Sidebar = () => {
           <ExternalLink className="w-3 h-3" />
         </a>
         <div className="px-2 text-[11px]">
-          <span>VitrixFlow v1.0.0 • Open Source</span>
+          <span>WebFlow v1.0.0 • Open Source</span>
         </div>
       </div>
     </aside>

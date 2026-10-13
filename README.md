@@ -1,8 +1,8 @@
-# VitrixFlow ⚡
+# WebFlow ⚡
 
 > **Plataforma Aberta de Automação Omnichannel, Flow Builder DAG & Escudo Anti-Bloqueio (Alternativa Open Source e Gratuita ao ManyChat)**
 
-O **VitrixFlow** foi desenvolvido através de engenharia reversa forense (**REA - Reverse Engineer Anything**) da arquitetura interna do ManyChat, projetado para lojistas, infoprodutores e empresas que necessitam de automações poderosas no **Instagram Direct, Comentários de Reels/Posts e WhatsApp Cloud API** sem custos abusivos de mensalidade.
+O **WebFlow** foi desenvolvido através de engenharia reversa forense (**REA - Reverse Engineer Anything**) da arquitetura interna do ManyChat, projetado para lojistas, infoprodutores e empresas que necessitam de automações poderosas no **Instagram Direct, Comentários de Reels/Posts e WhatsApp Cloud API** sem custos abusivos de mensalidade.
 
 ---
 

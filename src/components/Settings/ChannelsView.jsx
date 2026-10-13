@@ -7,8 +7,8 @@ export const ChannelsView = () => {
   const { channels, setChannels } = useApp();
   const [copiedField, setCopiedField] = useState(null);
 
-  const webhookUrl = 'https://vitrixflow.pages.dev/api/webhook';
-  const verifyToken = 'vitrixflow_meta_token_secret_2026';
+  const webhookUrl = 'https://webflow.pages.dev/api/webhook';
+  const verifyToken = 'webflow_meta_token_secret_2026';
 
   const copyToClipboard = (text, fieldName) => {
     navigator.clipboard.writeText(text);

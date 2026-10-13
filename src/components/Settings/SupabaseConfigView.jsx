@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Database, Check, Copy, Key, Server, CheckCircle2, AlertCircle } from 'lucide-react';
 import { getSupabaseConfig, saveSupabaseConfig } from '../../lib/supabase';
 
-const SUPABASE_SCHEMA_SQL = `-- SCHEMA COMPLETO DO VITRIXFLOW PARA SUPABASE (POSTGRESQL)
+const SUPABASE_SCHEMA_SQL = `-- SCHEMA COMPLETO DO WEBFLOW PARA SUPABASE (POSTGRESQL)
 -- Cole e execute este script no menu 'SQL Editor' do seu painel Supabase
 
 -- 1. Habilitar UUID

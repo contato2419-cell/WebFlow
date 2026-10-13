@@ -54,7 +54,7 @@ export const AuthModal = ({ isOpen, onClose }) => {
           </div>
           <div>
             <h2 className="text-base font-bold text-white font-heading">
-              {isRegister ? 'Criar Conta Gratuita' : 'Entrar no VitrixFlow'}
+              {isRegister ? 'Criar Conta Gratuita' : 'Entrar no WebFlow'}
             </h2>
             <p className="text-[11px] text-slate-400">Automações omnichannel com login individual</p>
           </div>

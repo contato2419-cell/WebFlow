@@ -34,7 +34,7 @@ export const Navbar = ({ onOpenSimulator }) => {
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="font-heading font-bold text-lg text-white tracking-tight">VitrixFlow</span>
+              <span className="font-heading font-bold text-lg text-white tracking-tight">WebFlow</span>
               <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">Free Pro</span>
             </div>
             <p className="text-xs text-slate-400 -mt-0.5">{user?.workspace || 'Workspace Padrão'}</p>

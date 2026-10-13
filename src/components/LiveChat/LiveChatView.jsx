@@ -150,7 +150,7 @@ export const LiveChatView = () => {
                 }`}>
                   <div className="flex items-center justify-between gap-3 text-[10px] text-slate-400 mb-1">
                     <span className="font-semibold text-slate-300">
-                      {msg.sender === 'user' ? activeConv.contactName : msg.sender === 'bot' ? '🤖 Robô VitrixFlow' : '👤 Atendente'}
+                      {msg.sender === 'user' ? activeConv.contactName : msg.sender === 'bot' ? '🤖 Robô WebFlow' : '👤 Atendente'}
                     </span>
                     <span>{msg.time}</span>
                   </div>

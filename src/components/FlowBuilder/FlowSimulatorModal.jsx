@@ -16,7 +16,7 @@ export const FlowSimulatorModal = ({ onClose }) => {
   ]);
   const [isTyping, setIsTyping] = useState(false);
   const [logTrace, setLogTrace] = useState([
-    'Iniciando Interpretador de Grafo VitrixFlow...',
+    'Iniciando Interpretador de Grafo WebFlow...',
     'Aguardando evento webhook: feed/comments...'
   ]);
 
@@ -118,7 +118,7 @@ export const FlowSimulatorModal = ({ onClose }) => {
                 </div>
               </div>
               <div>
-                <p className="text-xs font-bold text-white">Vitrix Oficial</p>
+                <p className="text-xs font-bold text-white">WebFlow Oficial</p>
                 <p className="text-[10px] text-emerald-400 flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Online
                 </p>
