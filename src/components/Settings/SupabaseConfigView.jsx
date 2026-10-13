@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Database, Check, Copy, Key, Server, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Database, Check, Copy, Key, Server, CheckCircle2, AlertCircle, HelpCircle } from 'lucide-react';
 import { getSupabaseConfig, saveSupabaseConfig } from '../../lib/supabase';
 
 const SUPABASE_SCHEMA_SQL = `-- SCHEMA COMPLETO DO WEBFLOW PARA SUPABASE (POSTGRESQL)
@@ -111,58 +111,64 @@ export const SupabaseConfigView = () => {
 
   return (
     <div className="p-8 space-y-8 max-w-7xl mx-auto animate-in fade-in duration-300">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
         <div>
-          <h1 className="text-2xl font-bold font-heading text-white tracking-tight flex items-center gap-2.5">
-            <Database className="w-6 h-6 text-emerald-400" />
-            Configuração do Supabase (Banco de Dados PostgreSQL)
-          </h1>
-          <p className="text-sm text-slate-400 mt-1">
-            Conecte seu projeto gratuito no Supabase para persistência de dados em nuvem ou utilize o banco local.
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold font-heading text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
+              <Database className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+              Banco de Dados Supabase (PostgreSQL Gratuito)
+            </h1>
+            <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400 font-bold border border-emerald-200 dark:border-emerald-800">
+              Conectado ao Projeto
+            </span>
+          </div>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Seus contatos, fluxos e mensagens são salvos diretamente no seu próprio banco de dados, sem intermediários.
           </p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Formulário de Conexão */}
-        <div className="p-6 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-5">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-            <h2 className="text-sm font-bold text-white font-heading">Credenciais da API Supabase</h2>
+        <div className="p-6 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xs space-y-5">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700">
+            <h2 className="text-sm font-bold text-slate-900 dark:text-white font-heading">Credenciais da API Supabase</h2>
             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
               currentConfig.isConfigured 
-                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
-                : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950 dark:text-emerald-400' 
+                : 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950 dark:text-amber-400'
             }`}>
-              {currentConfig.isConfigured ? 'Conectado' : 'Modo Local Ativo'}
+              {currentConfig.isConfigured ? '✓ Banco Conectado' : 'Aguardando Credenciais'}
             </span>
           </div>
 
           <form onSubmit={handleSave} className="space-y-4 text-xs">
             <div>
-              <label className="text-slate-300 font-semibold block mb-1">Project URL (URL do Projeto Supabase)</label>
+              <label className="text-slate-700 dark:text-slate-300 font-bold block mb-1">Project URL (URL do Projeto Supabase)</label>
               <input
                 type="text"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://xyzproject.supabase.co"
-                className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono"
+                placeholder="https://rezyrhydnsvtmyqxefzb.supabase.co"
+                className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-blue-500"
               />
             </div>
 
             <div>
-              <label className="text-slate-300 font-semibold block mb-1">Anon / Public API Key</label>
+              <label className="text-slate-700 dark:text-slate-300 font-bold block mb-1">Anon / Public API Key</label>
               <input
                 type="password"
                 value={key}
                 onChange={(e) => setKey(e.target.value)}
                 placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono"
+                className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-blue-500"
               />
             </div>
 
             <button
               type="submit"
-              className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-colors flex items-center justify-center gap-2"
+              className="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold transition-colors flex items-center justify-center gap-2 shadow-xs"
             >
               {savedSuccess ? <CheckCircle2 className="w-4 h-4" /> : <Server className="w-4 h-4" />}
               <span>{savedSuccess ? 'Configurações Salvas com Sucesso!' : 'Salvar Credenciais do Supabase'}</span>
@@ -171,23 +177,23 @@ export const SupabaseConfigView = () => {
         </div>
 
         {/* Script SQL Pronto para Copiar */}
-        <div className="p-6 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-4 flex flex-col justify-between">
+        <div className="p-6 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xs space-y-4 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-2">
-              <h2 className="text-sm font-bold text-white font-heading">Script SQL para o Supabase Editor</h2>
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white font-heading">Script SQL para o Supabase</h2>
               <button
                 onClick={copySql}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-semibold transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-bold transition-colors dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800"
               >
-                {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                <span>{copied ? 'Copiado para a Área de Transferência!' : 'Copiar SQL Completo'}</span>
+                {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>{copied ? 'Copiado!' : 'Copiar SQL'}</span>
               </button>
             </div>
-            <p className="text-xs text-slate-400 mb-3">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
               Abra seu painel do Supabase, clique em <strong>SQL Editor</strong>, cole este código e clique em <strong>Run</strong> para criar automaticamente todas as tabelas.
             </p>
 
-            <pre className="p-4 rounded-xl bg-slate-950 border border-slate-800/80 text-[10px] font-mono text-slate-300 h-64 overflow-y-auto leading-relaxed">
+            <pre className="p-4 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-[10px] font-mono text-slate-800 dark:text-slate-200 h-64 overflow-y-auto leading-relaxed">
               {SUPABASE_SCHEMA_SQL}
             </pre>
           </div>

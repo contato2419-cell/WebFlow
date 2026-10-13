@@ -3,11 +3,11 @@ import { getSupabaseClient } from '../lib/supabase';
 
 const AppContext = createContext();
 
-// Mock inicial de fluxos predefinidos
+// Mock inicial de fluxos predefinidos no padrão ManyChat
 const INITIAL_FLOWS = [
   {
     id: 'flow_01_reels_anti_ban',
-    name: 'Reels: Comentário → Caixinha Anti-Ban → WhatsApp',
+    name: 'Reels: Comentário → Caixinha Anti-Ban → Link Seguro',
     channel: 'instagram',
     active: true,
     folder: 'Tráfego & Leads',
@@ -20,7 +20,7 @@ const INITIAL_FLOWS = [
         title: 'Gatilho: Comentário no Reels',
         position: { x: 50, y: 150 },
         data: {
-          keyword: 'VITRIX',
+          keyword: 'QUERO',
           matchType: 'contains',
           antiBanJitter: 12,
           spintaxCount: 8
@@ -30,9 +30,9 @@ const INITIAL_FLOWS = [
         id: 'node_prompt_box',
         type: 'message',
         title: '1ª DM: Caixinha de Confirmação (Anti-Spam)',
-        position: { x: 400, y: 120 },
+        position: { x: 420, y: 120 },
         data: {
-          text: 'Oi {{first_name}}! Vi que você comentou no vídeo querendo saber mais sobre a Vitrix. Para eu liberar o seu acesso agora, toque no botão abaixo 👇',
+          text: 'Oi {{first_name}}! Vi que você comentou no vídeo querendo o material exclusivo. Para eu liberar o seu acesso agora, toque no botão abaixo 👇',
           buttons: [
             { id: 'b1', title: '🚀 Quero Acessar Agora', targetNode: 'node_action_tag' }
           ]
@@ -42,10 +42,10 @@ const INITIAL_FLOWS = [
         id: 'node_action_tag',
         type: 'action',
         title: 'Ação: Aplicar Tag & Abrir Janela 24h',
-        position: { x: 750, y: 120 },
+        position: { x: 790, y: 120 },
         data: {
           actions: [
-            { type: 'add_tag', value: 'lead_engajado_reels' },
+            { type: 'add_tag', value: 'lead_qualificado_reels' },
             { type: 'set_field', field: 'Origem', value: 'Instagram_Reels' }
           ],
           targetNode: 'node_send_link'
@@ -55,11 +55,11 @@ const INITIAL_FLOWS = [
         id: 'node_send_link',
         type: 'message',
         title: '2ª DM: Entrega do Link Seguro',
-        position: { x: 1080, y: 120 },
+        position: { x: 1150, y: 120 },
         data: {
-          text: 'Show! Como você confirmou, aqui está o seu acesso direto ao nosso time no WhatsApp e catálogo completo: 📲 https://wa.me/5511999998888?text=QueroMeuAcessoVitrix',
+          text: 'Perfeito! Como você confirmou, aqui está o seu acesso direto ao material e grupo VIP: 📲 https://wa.me/5511999998888?text=QueroMeuAcesso',
           buttons: [
-            { id: 'b2', title: 'Abrir no WhatsApp', url: 'https://wa.me/5511999998888' }
+            { id: 'b2', title: 'Entrar no Grupo VIP', url: 'https://wa.me/5511999998888' }
           ]
         }
       }
@@ -90,9 +90,9 @@ const INITIAL_FLOWS = [
         id: 'node_w_msg',
         type: 'message',
         title: 'Boas-vindas & Pergunta',
-        position: { x: 400, y: 150 },
+        position: { x: 420, y: 150 },
         data: {
-          text: 'Olá! Seja muito bem-vindo à Vitrix. Você já é lojista ou compra no varejo?',
+          text: 'Olá! Seja muito bem-vindo ao WebFlow. Você já é lojista ou compra no varejo?',
           buttons: [
             { id: 'bw1', title: 'Sou Lojista (Atacado)', targetNode: 'node_w_atacado' },
             { id: 'bw2', title: 'Compro Varejo', targetNode: 'node_w_varejo' }
@@ -109,9 +109,9 @@ const INITIAL_FLOWS = [
 const INITIAL_TRIGGERS = [
   {
     id: 'trig_01',
-    name: 'Reels Vitrix Alta Conversão',
+    name: 'Reels: Entrega de Material Gratuito',
     postUrl: 'https://instagram.com/p/C8x9Y12z34',
-    keyword: 'VITRIX',
+    keyword: 'QUERO',
     matchType: 'exact',
     channel: 'instagram',
     active: true,
@@ -139,7 +139,7 @@ const INITIAL_CONTACTS = [
     channel: 'instagram',
     phone: '+55 11 99999-8888',
     avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop',
-    tags: ['lead_engajado_reels', 'cliente_vip'],
+    tags: ['lead_qualificado_reels', 'cliente_vip'],
     customFields: { Origem: 'Instagram_Reels', SaldoPontos: 150 },
     lastInteraction: 'Há 12 minutos',
     windowHoursRemaining: 23.8,
@@ -182,14 +182,14 @@ const INITIAL_CONVERSATIONS = [
     channel: 'instagram',
     avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop',
     botPaused: false,
-    lastMessage: 'Show! Como você confirmou, aqui está o seu acesso direto...',
+    lastMessage: 'Perfeito! Como você confirmou, aqui está o seu acesso direto...',
     lastTime: '14:02',
     unread: false,
     messages: [
-      { id: 'm1', sender: 'user', text: 'VITRIX', time: '14:00' },
-      { id: 'm2', sender: 'bot', text: 'Oi Ygor! Vi que você comentou no vídeo querendo saber mais sobre a Vitrix. Para eu liberar o seu acesso agora, toque no botão abaixo 👇', time: '14:00', button: '🚀 Quero Acessar Agora' },
+      { id: 'm1', sender: 'user', text: 'QUERO', time: '14:00' },
+      { id: 'm2', sender: 'bot', text: 'Oi Ygor! Vi que você comentou no vídeo querendo o material exclusivo. Para eu liberar o seu acesso agora, toque no botão abaixo 👇', time: '14:00', button: '🚀 Quero Acessar Agora' },
       { id: 'm3', sender: 'user', text: '[Clicou em: 🚀 Quero Acessar Agora]', time: '14:01' },
-      { id: 'm4', sender: 'bot', text: 'Show! Como você confirmou, aqui está o seu acesso direto ao nosso time no WhatsApp e catálogo completo: 📲 https://wa.me/5511999998888', time: '14:02' }
+      { id: 'm4', sender: 'bot', text: 'Perfeito! Como você confirmou, aqui está o seu acesso direto ao material e grupo VIP: 📲 https://wa.me/5511999998888', time: '14:02' }
     ]
   },
   {
@@ -205,7 +205,7 @@ const INITIAL_CONVERSATIONS = [
     unread: true,
     messages: [
       { id: 'mw1', sender: 'user', text: 'Olá, gostaria de saber os preços de atacado', time: '13:40' },
-      { id: 'mw2', sender: 'bot', text: 'Olá! Seja muito bem-vindo à Vitrix. Você já é lojista ou compra no varejo?', time: '13:40' },
+      { id: 'mw2', sender: 'bot', text: 'Olá! Seja muito bem-vindo ao WebFlow. Você já é lojista ou compra no varejo?', time: '13:40' },
       { id: 'mw3', sender: 'user', text: 'Vocês vendem para pessoa jurídica com CNPJ?', time: '13:45' }
     ]
   }
@@ -214,31 +214,49 @@ const INITIAL_CONVERSATIONS = [
 export const AppProvider = ({ children }) => {
   const [currentView, setCurrentView] = useState('dashboard');
   
+  // Tema: 'light' por padrão para a interface limpa ManyChat
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('webflow_theme') || 'light';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('webflow_theme', theme);
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+  };
+
   // Estados principais
   const [flows, setFlows] = useState(() => {
-    const saved = localStorage.getItem('vitrixflow_flows');
+    const saved = localStorage.getItem('webflow_flows') || localStorage.getItem('vitrixflow_flows');
     return saved ? JSON.parse(saved) : INITIAL_FLOWS;
   });
 
   const [triggers, setTriggers] = useState(() => {
-    const saved = localStorage.getItem('vitrixflow_triggers');
+    const saved = localStorage.getItem('webflow_triggers') || localStorage.getItem('vitrixflow_triggers');
     return saved ? JSON.parse(saved) : INITIAL_TRIGGERS;
   });
 
   const [contacts, setContacts] = useState(() => {
-    const saved = localStorage.getItem('vitrixflow_contacts');
+    const saved = localStorage.getItem('webflow_contacts') || localStorage.getItem('vitrixflow_contacts');
     return saved ? JSON.parse(saved) : INITIAL_CONTACTS;
   });
 
   const [conversations, setConversations] = useState(() => {
-    const saved = localStorage.getItem('vitrixflow_conversations');
+    const saved = localStorage.getItem('webflow_conversations') || localStorage.getItem('vitrixflow_conversations');
     return saved ? JSON.parse(saved) : INITIAL_CONVERSATIONS;
   });
 
   const [channels, setChannels] = useState(() => {
-    const saved = localStorage.getItem('vitrixflow_channels');
+    const saved = localStorage.getItem('webflow_channels') || localStorage.getItem('vitrixflow_channels');
     return saved ? JSON.parse(saved) : {
-      instagram: { connected: true, accountName: '@vitrix.oficial', pageId: '10492817481920', verified: true },
+      instagram: { connected: true, accountName: '@suaempresa.oficial', pageId: '10492817481920', verified: true },
       whatsapp: { connected: true, number: '+55 (11) 99999-8888', wabaId: 'waba_99410293', verified: true },
       messenger: { connected: false, pageId: '' },
       telegram: { connected: false, botUsername: '' }
@@ -249,23 +267,23 @@ export const AppProvider = ({ children }) => {
 
   // Sincronização localStorage
   useEffect(() => {
-    localStorage.setItem('vitrixflow_flows', JSON.stringify(flows));
+    localStorage.setItem('webflow_flows', JSON.stringify(flows));
   }, [flows]);
 
   useEffect(() => {
-    localStorage.setItem('vitrixflow_triggers', JSON.stringify(triggers));
+    localStorage.setItem('webflow_triggers', JSON.stringify(triggers));
   }, [triggers]);
 
   useEffect(() => {
-    localStorage.setItem('vitrixflow_contacts', JSON.stringify(contacts));
+    localStorage.setItem('webflow_contacts', JSON.stringify(contacts));
   }, [contacts]);
 
   useEffect(() => {
-    localStorage.setItem('vitrixflow_conversations', JSON.stringify(conversations));
+    localStorage.setItem('webflow_conversations', JSON.stringify(conversations));
   }, [conversations]);
 
   useEffect(() => {
-    localStorage.setItem('vitrixflow_channels', JSON.stringify(channels));
+    localStorage.setItem('webflow_channels', JSON.stringify(channels));
   }, [channels]);
 
   // Ações de Fluxos
@@ -277,7 +295,7 @@ export const AppProvider = ({ children }) => {
     const newId = 'flow_' + Date.now();
     const newFlow = {
       id: newId,
-      name,
+      name: name || 'Novo Fluxo Automatizado',
       channel: channel || 'instagram',
       active: true,
       folder: 'Geral',
@@ -295,7 +313,7 @@ export const AppProvider = ({ children }) => {
           id: 'node_msg_1',
           type: 'message',
           title: 'Primeira Mensagem',
-          position: { x: 400, y: 150 },
+          position: { x: 420, y: 150 },
           data: { text: 'Olá {{first_name}}! Como posso te ajudar hoje?', buttons: [] }
         }
       ],
@@ -341,6 +359,9 @@ export const AppProvider = ({ children }) => {
     <AppContext.Provider value={{
       currentView,
       setCurrentView,
+      theme,
+      setTheme,
+      toggleTheme,
       flows,
       selectedFlowId,
       setSelectedFlowId,

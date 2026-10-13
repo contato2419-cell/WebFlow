@@ -3,23 +3,55 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>WebFlow — Plataforma Aberta de Automação Omnichannel & Flow Builder</title>
-    <meta name="description" content="Automação de Instagram, WhatsApp e Messenger com Flow Builder visual DAG, proteção anti-bloqueio para comentários e CRM unificado." />
+    <title>WebFlow ⚡ ManyChat Gratuito & Anti-Bloqueio Instagram</title>
+    
+    <!-- Meta SEO & Open Graph (Capa ao Compartilhar o Link) -->
+    <meta name="description" content="Plataforma aberta e gratuita de automação para Instagram e WhatsApp. Flow Builder visual, resposta a comentários com Spintax e Escudo Anti-Bloqueio." />
+    
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://webflow-app-b25.pages.dev" />
+    <meta property="og:title" content="WebFlow ⚡ ManyChat Gratuito & Anti-Bloqueio Instagram" />
+    <meta property="og:description" content="Automatize comentários em Reels, envie DMs seguras com Spintax e 2-Step button. Flow Builder visual DAG, CRM unificado e 100% gratuito para sempre." />
+    <meta property="og:image" content="https://webflow-app-b25.pages.dev/og-cover.png" />
+    <meta property="og:image:secure_url" content="https://webflow-app-b25.pages.dev/og-cover.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    
+    <!-- Twitter Cards -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://webflow-app-b25.pages.dev" />
+    <meta name="twitter:title" content="WebFlow ⚡ ManyChat Gratuito & Anti-Bloqueio Instagram" />
+    <meta name="twitter:description" content="Automatize comentários em Reels, envie DMs seguras com Spintax e 2-Step button. Flow Builder visual DAG, CRM unificado e 100% gratuito para sempre." />
+    <meta name="twitter:image" content="https://webflow-app-b25.pages.dev/og-cover.png" />
+
+    <!-- Favicon & Ícone do App (Nano Banana) -->
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/favicon.png" />
+
+    <!-- Fontes Modernas ManyChat: Inter & Plus Jakarta Sans -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236366f1'><path d='M13 2L3 14h9l-1 8 10-12h-9l1-8z'/></svg>" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
+        darkMode: 'class',
         theme: {
           extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+              display: ['Plus Jakarta Sans', 'sans-serif'],
+            },
             colors: {
-              slate: {
-                950: '#090d16',
-                900: '#0f172a',
-                800: '#1e293b',
-                700: '#334155',
+              manychat: {
+                blue: '#0066FF',
+                'blue-hover': '#0052CC',
+                dark: '#0F172A',
+                border: '#E2E8F0',
+                surface: '#F8FAFC',
+                accent: '#10B981'
               }
             }
           }
@@ -27,7 +59,7 @@
       }
     </script>
   </head>
-  <body class="bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500 selection:text-white">
+  <body class="bg-[#F8FAFC] text-slate-800 antialiased selection:bg-blue-600 selection:text-white transition-colors duration-200">
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

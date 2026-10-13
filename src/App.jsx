@@ -25,7 +25,7 @@ export const App = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0B0F19] text-slate-800 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
       {/* Navbar Superior */}
       <Navbar 
         onOpenSimulator={() => setSimulatorOpen(true)}
@@ -38,7 +38,7 @@ export const App = () => {
         <Sidebar />
 
         {/* View Principal Ativa */}
-        <main className="flex-1 overflow-y-auto bg-slate-950">
+        <main className="flex-1 overflow-y-auto bg-[#F8FAFC] dark:bg-[#0B0F19] transition-colors duration-200">
           {currentView === 'dashboard' && <DashboardView onNewFlow={handleCreateNewFlow} />}
           {currentView === 'flows' && <FlowCanvas onOpenSimulator={() => setSimulatorOpen(true)} />}
           {currentView === 'growth-tools' && <CommentsTriggerView />}

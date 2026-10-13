@@ -1,14 +1,34 @@
+/* =========================================================================
+   WEBFLOW — DESIGN SYSTEM ESTILO MANYCHAT CLEAN & PROFESSIONAL
+   Suporte a Tema Claro (Padrão) e Tema Escuro com tipografia de alta legibilidade
+   ========================================================================= */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
-  --primary: #6366f1;
-  --primary-hover: #4f46e5;
-  --primary-light: #e0e7ff;
-  --bg-dark: #090d16;
-  --card-dark: #111827;
-  --card-border: #1f2937;
-  --accent-cyan: #06b6d4;
-  --accent-emerald: #10b981;
-  --accent-amber: #f59e0b;
-  --accent-rose: #f43f5e;
+  --primary: #0066FF;
+  --primary-hover: #0052CC;
+  --primary-light: #EFF6FF;
+  --bg-page: #F8FAFC;
+  --card-bg: #FFFFFF;
+  --border-color: #E2E8F0;
+  --text-main: #0F172A;
+  --text-muted: #64748B;
+  --accent-green: #10B981;
+}
+
+.dark {
+  --primary: #3B82F6;
+  --primary-hover: #2563EB;
+  --primary-light: #1E293B;
+  --bg-page: #0B0F19;
+  --card-bg: #111827;
+  --border-color: #1F2937;
+  --text-main: #F8FAFC;
+  --text-muted: #94A3B8;
+  --accent-green: #10B981;
 }
 
 * {
@@ -19,65 +39,63 @@
 
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: #090d16;
-  color: #f1f5f9;
+  background-color: var(--bg-page);
+  color: var(--text-main);
   overflow-x: hidden;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 h1, h2, h3, h4, .font-heading {
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  letter-spacing: -0.02em;
 }
 
-/* Custom Scrollbars */
+/* Scrollbars Elegantes */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #090d16;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #273549;
+  background: #CBD5E1;
   border-radius: 9999px;
 }
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+}
 ::-webkit-scrollbar-thumb:hover {
-  background: #3b4e6b;
+  background: #94A3B8;
 }
 
-/* Canvas Grid Pattern */
-.canvas-grid {
-  background-color: #090d16;
-  background-image: 
-    radial-gradient(circle, #253347 1px, transparent 1px);
-  background-size: 24px 24px;
+/* Grade de Pontinhos do ManyChat Canvas (Dot Grid) */
+.canvas-grid-light {
+  background-color: #F8FAFC;
+  background-image: radial-gradient(circle, #CBD5E1 1.2px, transparent 1.2px);
+  background-size: 20px 20px;
 }
 
-/* Glassmorphism */
-.glass-panel {
-  background: rgba(17, 24, 39, 0.75);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+.canvas-grid-dark {
+  background-color: #0B0F19;
+  background-image: radial-gradient(circle, #1E293B 1.2px, transparent 1.2px);
+  background-size: 20px 20px;
 }
 
-.glass-dropdown {
-  background: rgba(15, 23, 42, 0.95);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
+/* Card estilo ManyChat */
+.manychat-card {
+  background-color: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+  border-radius: 0.75rem;
+}
+.dark .manychat-card {
+  background-color: #111827;
+  border-color: #1F2937;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
 }
 
-/* Animations */
-@keyframes pulse-subtle {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.85; transform: scale(1.02); }
-}
-
-.animate-pulse-subtle {
-  animation: pulse-subtle 3s infinite ease-in-out;
-}
-
-/* Node Handle styles */
+/* Conectores do Grafo */
 .node-handle-in {
   position: absolute;
   left: -8px;
@@ -86,11 +104,12 @@ h1, h2, h3, h4, .font-heading {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: #6366f1;
-  border: 2px solid #090d16;
-  box-shadow: 0 0 10px rgba(99, 102, 241, 0.8);
+  background: #0066FF;
+  border: 3px solid #FFFFFF;
+  box-shadow: 0 2px 4px rgba(0, 102, 255, 0.3);
   cursor: crosshair;
   transition: all 0.2s ease;
+  z-index: 10;
 }
 
 .node-handle-out {
@@ -101,11 +120,16 @@ h1, h2, h3, h4, .font-heading {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: #10b981;
-  border: 2px solid #090d16;
-  box-shadow: 0 0 10px rgba(16, 185, 129, 0.8);
+  background: #10B981;
+  border: 3px solid #FFFFFF;
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
   cursor: crosshair;
   transition: all 0.2s ease;
+  z-index: 10;
+}
+
+.dark .node-handle-in, .dark .node-handle-out {
+  border-color: #111827;
 }
 
 .node-handle-in:hover, .node-handle-out:hover {
