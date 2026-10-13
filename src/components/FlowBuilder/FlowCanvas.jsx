@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Plus, 
   Play, 
@@ -35,58 +35,90 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
   const [startPan, setStartPan] = useState({ x: 0, y: 0 });
   const [selectedNodeId, setSelectedNodeId] = useState(null);
   const [draggingNodeId, setDraggingNodeId] = useState(null);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-
+  const dragStartRef = useRef(null);
   const canvasRef = useRef(null);
 
   if (!currentFlow) return null;
 
-  // Handlers de Pan
+  // Handlers de Pan no Canvas (clicar em qualquer área vazia)
   const handleMouseDown = (e) => {
-    if (e.target === canvasRef.current || e.target.tagName === 'svg') {
-      setIsPanning(true);
-      setStartPan({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+    // Se o clique foi dentro de um nó (.flow-node), botão ou input, não faz pan do canvas
+    if (e.target.closest('.flow-node') || e.target.closest('button') || e.target.closest('input') || e.target.closest('textarea')) {
+      return;
     }
-  };
-
-  const handleMouseMove = (e) => {
-    if (isPanning) {
-      setPan({ x: e.clientX - startPan.x, y: e.clientY - startPan.y });
-    } else if (draggingNodeId) {
-      const updatedNodes = currentFlow.nodes.map(node => {
-        if (node.id === draggingNodeId) {
-          return {
-            ...node,
-            position: {
-              x: Math.round((e.clientX - pan.x - dragOffset.x) / zoom),
-              y: Math.round((e.clientY - pan.y - dragOffset.y) / zoom)
-            }
-          };
-        }
-        return node;
-      });
-      updateFlow(currentFlow.id, { nodes: updatedNodes });
-    }
-  };
-
-  const handleMouseUp = () => {
-    setIsPanning(false);
-    setDraggingNodeId(null);
+    setIsPanning(true);
+    setStartPan({ x: e.clientX - pan.x, y: e.clientY - pan.y });
   };
 
   // Arrastar nó específico
   const handleNodeMouseDown = (e, nodeId) => {
+    // Se o clique foi em um botão de ação (ex: excluir) ou input, ignora
+    if (e.target.closest('button') || e.target.closest('input') || e.target.closest('textarea')) {
+      return;
+    }
     e.stopPropagation();
     setSelectedNodeId(nodeId);
-    setDraggingNodeId(nodeId);
+    
     const node = currentFlow.nodes.find(n => n.id === nodeId);
-    if (node) {
-      setDragOffset({
-        x: (e.clientX - pan.x) - (node.position.x * zoom),
-        y: (e.clientY - pan.y) - (node.position.y * zoom)
-      });
-    }
+    if (!node) return;
+
+    setDraggingNodeId(nodeId);
+    dragStartRef.current = {
+      nodeId,
+      startX: e.clientX,
+      startY: e.clientY,
+      nodeStartX: node.position.x,
+      nodeStartY: node.position.y
+    };
   };
+
+  // Listeners globais de window para arrastar suavemente sem travar ou perder o cursor
+  useEffect(() => {
+    const handleWindowMouseMove = (e) => {
+      if (isPanning) {
+        setPan({
+          x: e.clientX - startPan.x,
+          y: e.clientY - startPan.y
+        });
+      } else if (dragStartRef.current) {
+        const { nodeId, startX, startY, nodeStartX, nodeStartY } = dragStartRef.current;
+        const dx = (e.clientX - startX) / zoom;
+        const dy = (e.clientY - startY) / zoom;
+        
+        const updatedNodes = currentFlow.nodes.map(n => {
+          if (n.id === nodeId) {
+            return {
+              ...n,
+              position: {
+                x: Math.round(nodeStartX + dx),
+                y: Math.round(nodeStartY + dy)
+              }
+            };
+          }
+          return n;
+        });
+        updateFlow(currentFlow.id, { nodes: updatedNodes });
+      }
+    };
+
+    const handleWindowMouseUp = () => {
+      if (isPanning) setIsPanning(false);
+      if (dragStartRef.current) {
+        dragStartRef.current = null;
+        setDraggingNodeId(null);
+      }
+    };
+
+    if (isPanning || draggingNodeId) {
+      window.addEventListener('mousemove', handleWindowMouseMove);
+      window.addEventListener('mouseup', handleWindowMouseUp);
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleWindowMouseMove);
+      window.removeEventListener('mouseup', handleWindowMouseUp);
+    };
+  }, [isPanning, startPan, draggingNodeId, currentFlow, zoom]);
 
   // Adicionar novo nó
   const handleAddNode = (type) => {
@@ -301,7 +333,7 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
                   transform: `translate(${node.position.x}px, ${node.position.y}px)`,
                   width: '290px'
                 }}
-                className={`absolute pointer-events-auto rounded-xl bg-white dark:bg-slate-900 border transition-all cursor-move shadow-sm ${
+                className={`flow-node absolute pointer-events-auto rounded-xl bg-white dark:bg-slate-900 border transition-shadow cursor-grab active:cursor-grabbing shadow-sm select-none ${
                   isSelected 
                     ? 'border-indigo-500 shadow-md ring-2 ring-indigo-500/20' 
                     : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'

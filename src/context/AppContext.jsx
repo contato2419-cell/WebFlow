@@ -259,9 +259,12 @@ export const AppProvider = ({ children }) => {
 
   const [selectedFlowId, setSelectedFlowId] = useState(flows[0]?.id || null);
 
-  // Sincronização localStorage
+  // Sincronização localStorage com debounce para não travar o drag dos nós
   useEffect(() => {
-    localStorage.setItem('webflow_flows_v5', JSON.stringify(flows));
+    const timer = setTimeout(() => {
+      localStorage.setItem('webflow_flows_v5', JSON.stringify(flows));
+    }, 150);
+    return () => clearTimeout(timer);
   }, [flows]);
 
   useEffect(() => {
