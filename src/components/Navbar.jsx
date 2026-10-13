@@ -26,17 +26,17 @@ export const Navbar = ({ onOpenSimulator }) => {
 
   return (
     <header className="h-16 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 flex items-center justify-between z-30 sticky top-0 transition-colors">
-      {/* Brand & Nano Banana Mascot */}
+      {/* Brand & Official WebFlow Logo */}
       <div className="flex items-center gap-4">
         <div 
           onClick={() => setCurrentView('dashboard')}
           className="flex items-center gap-3 cursor-pointer group"
         >
-          {/* Logo Nano Banana */}
+          {/* Logo Oficial WebFlow */}
           <div className="relative">
             <img 
               src="/logo.jpg" 
-              alt="Nano Banana WebFlow" 
+              alt="WebFlow Logo" 
               className="w-10 h-10 rounded-xl object-cover shadow-sm border border-slate-200 dark:border-slate-700 group-hover:scale-105 transition-transform" 
             />
             <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white dark:border-slate-900" title="Sistema Online"></span>
@@ -49,7 +49,7 @@ export const Navbar = ({ onOpenSimulator }) => {
                 ManyChat Free
               </span>
             </div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 -mt-0.5 font-medium">Nano Banana Automation</p>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 -mt-0.5 font-medium">Automação Omnichannel</p>
           </div>
         </div>
 

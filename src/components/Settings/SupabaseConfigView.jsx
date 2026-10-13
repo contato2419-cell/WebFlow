@@ -150,7 +150,7 @@ export const SupabaseConfigView = () => {
                 type="text"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://rezyrhydnsvtmyqxefzb.supabase.co"
+                placeholder="https://seu-projeto.supabase.co"
                 className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-blue-500"
               />
             </div>
