@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Send, RotateCcw, Smartphone, ShieldCheck, CheckCircle2, Sparkles, HelpCircle } from 'lucide-react';
+import { X, Send, RotateCcw, Smartphone, ShieldCheck, CheckCircle2, Sparkles, HelpCircle, UserCheck, Lock, Unlock } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 export const FlowSimulatorModal = ({ onClose }) => {
@@ -7,11 +7,13 @@ export const FlowSimulatorModal = ({ onClose }) => {
   const currentFlow = flows.find(f => f.id === selectedFlowId) || flows[0];
 
   const [inputVal, setInputVal] = useState('QUERO');
+  const [simMode, setSimMode] = useState('follower_gate'); // 'follower_gate' | 'standard'
+  const [isFollowingUser, setIsFollowingUser] = useState(false);
   const [messages, setMessages] = useState([
     {
       id: 1,
       sender: 'system',
-      text: 'Simulação ao vivo. Comente no vídeo abaixo como se fosse um seguidor no Instagram:'
+      text: 'Simulação ao vivo. Comente no Reel abaixo como se fosse um seguidor no Instagram:'
     }
   ]);
   const [isTyping, setIsTyping] = useState(false);
@@ -43,28 +45,94 @@ export const FlowSimulatorModal = ({ onClose }) => {
     // Simula resposta do bot após delay
     setTimeout(() => {
       setIsTyping(false);
-      setMessages(prev => [
-        ...prev,
-        {
-          id: Date.now() + 1,
-          sender: 'bot',
-          text: 'Oi! Vi que você comentou no vídeo querendo o material exclusivo. Para liberar o seu acesso seguro agora, toque no botão abaixo 👇',
-          buttonText: '👉 Liberar Meu Acesso Agora'
-        }
-      ]);
-      setLogTrace(prev => [
-        ...prev,
-        `[4. 1ª DM Privada Enviada] Disparada caixa com botão interativo (SEM LINK DIRETO para evitar bloqueio).`,
-        `[5. Status Meta] Aguardando clique do usuário para abrir legalmente a Janela de 24 Horas.`
-      ]);
+      if (simMode === 'follower_gate') {
+        setMessages(prev => [
+          ...prev,
+          {
+            id: Date.now() + 1,
+            sender: 'bot',
+            text: 'Oi! 🎁 Esse material exclusivo é liberado apenas para quem me segue. Comece a seguir @ygorweb e toque no botão abaixo 👇',
+            buttonText: '✅ Já Comecei a Seguir! Liberar',
+            isGate: true
+          }
+        ]);
+        setLogTrace(prev => [
+          ...prev,
+          `[4. Trava de Seguidor Disparada] Enviada mensagem exigindo seguir o perfil @ygorweb.`,
+          `[5. Status Meta] Aguardando clique para verificar se o usuário realmente seguiu.`
+        ]);
+      } else {
+        setMessages(prev => [
+          ...prev,
+          {
+            id: Date.now() + 1,
+            sender: 'bot',
+            text: 'Oi! Vi que você comentou no vídeo querendo o material exclusivo. Para liberar o seu acesso agora, toque no botão abaixo 👇',
+            buttonText: '👉 Liberar Meu Acesso Agora',
+            isGate: false
+          }
+        ]);
+        setLogTrace(prev => [
+          ...prev,
+          `[4. 1ª DM Privada Enviada] Disparada caixa com botão interativo (SEM LINK DIRETO para evitar bloqueio).`,
+          `[5. Status Meta] Aguardando clique do usuário para abrir legalmente a Janela de 24 Horas.`
+        ]);
+      }
     }, 1200);
   };
 
-  const handleButtonClick = () => {
+  const handleButtonClick = (isGate) => {
+    const btnLabel = isGate ? '✅ Já Comecei a Seguir! Liberar' : '👉 Liberar Meu Acesso Agora';
     setMessages(prev => [
       ...prev,
-      { id: Date.now(), sender: 'user', text: '[Clicou no botão: 👉 Liberar Meu Acesso Agora]' }
+      { id: Date.now(), sender: 'user', text: `[Clicou no botão: ${btnLabel}]` }
     ]);
+
+    setIsTyping(true);
+
+    if (isGate) {
+      setTimeout(() => {
+        setIsTyping(false);
+        if (!isFollowingUser) {
+          // Bloqueado! Não seguiu ainda
+          setMessages(prev => [
+            ...prev,
+            {
+              id: Date.now() + 1,
+              sender: 'bot',
+              text: '❌ Ops! Verifiquei aqui na API da Meta e você AINDA NÃO está seguindo @ygorweb. Siga o perfil agora e depois toque no botão novamente para liberar seu link!',
+              buttonText: '✅ Já Comecei a Seguir! Liberar',
+              isGate: true
+            }
+          ]);
+          setLogTrace(prev => [
+            ...prev,
+            `[Meta Graph API] GET /user?fields=is_user_follow_business -> RETORNOU FALSE! ⛔`,
+            `[TRAVA ACIONADA] O seguidor clicou mas ainda NÃO seguiu o perfil. Link BLOQUEADO com sucesso!`,
+            `[Anti-Fraude] O material NÃO foi entregue. Solicitação de follow reenviada.`
+          ]);
+        } else {
+          // Liberado! Seguiu com sucesso
+          setMessages(prev => [
+            ...prev,
+            {
+              id: Date.now() + 1,
+              sender: 'bot',
+              text: '🎉 Perfeito! Confirmado que você é seguidor oficial! Aqui está o seu acesso direto ao material e grupo VIP: https://wa.me/5511999998888 📲',
+              url: 'https://wa.me/5511999998888'
+            }
+          ]);
+          setLogTrace(prev => [
+            ...prev,
+            `[Meta Graph API] GET /user?fields=is_user_follow_business -> RETORNOU TRUE! ✅`,
+            `[TRAVA DESBLOQUEADA] Seguidor verificado com sucesso!`,
+            `[Tag Aplicada] Adicionada tag "seguidor_qualificado_reels".`,
+            `[Link Seguro Entregue] Acesso liberado na caixa principal.`
+          ]);
+        }
+      }, 900);
+      return;
+    }
 
     setLogTrace(prev => [
       ...prev,
@@ -72,8 +140,6 @@ export const FlowSimulatorModal = ({ onClose }) => {
       `[7. Janela de 24 Horas Meta ABERTA] O Direct registrou interação consentida! A Meta não bloqueará sua conta.`,
       `[8. Tag Aplicada] Lead etiquetado como "lead_qualificado_reels".`
     ]);
-
-    setIsTyping(true);
 
     setTimeout(() => {
       setIsTyping(false);
@@ -106,11 +172,11 @@ export const FlowSimulatorModal = ({ onClose }) => {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-      <div className="w-full max-w-4xl h-[650px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl flex overflow-hidden">
+      <div className="w-full max-w-4xl h-[670px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl flex overflow-hidden">
         {/* Lado Esquerdo: Simulador de Celular Realista */}
-        <div className="w-[360px] bg-slate-50 dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between shrink-0">
+        <div className="w-[370px] bg-slate-50 dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between shrink-0">
           {/* Topo do Celular (Instagram Direct Header) */}
-          <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between">
+          <div className="p-3.5 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <img 
                 src="/logo.jpg" 
@@ -118,7 +184,7 @@ export const FlowSimulatorModal = ({ onClose }) => {
                 className="w-8 h-8 rounded-full object-cover border border-slate-200 dark:border-slate-700" 
               />
               <div>
-                <p className="text-xs font-bold text-slate-900 dark:text-white">Seu Instagram</p>
+                <p className="text-xs font-bold text-slate-900 dark:text-white">@ygorweb</p>
                 <p className="text-[10px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-semibold">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Online no Direct
                 </p>
@@ -130,8 +196,59 @@ export const FlowSimulatorModal = ({ onClose }) => {
             </button>
           </div>
 
+          {/* Seletor de Modo & Teste de Seguidor */}
+          <div className="p-2.5 bg-slate-100 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-700 space-y-2">
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="font-bold text-slate-700 dark:text-slate-300">Modo:</span>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setSimMode('follower_gate')}
+                  className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                    simMode === 'follower_gate' 
+                      ? 'bg-indigo-600 text-white shadow-xs' 
+                      : 'bg-white dark:bg-slate-750 text-slate-600 dark:text-slate-300'
+                  }`}
+                >
+                  🔒 Trava Seguidor
+                </button>
+                <button
+                  onClick={() => setSimMode('standard')}
+                  className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                    simMode === 'standard' 
+                      ? 'bg-blue-600 text-white shadow-xs' 
+                      : 'bg-white dark:bg-slate-750 text-slate-600 dark:text-slate-300'
+                  }`}
+                >
+                  🛡️ Anti-Ban Normal
+                </button>
+              </div>
+            </div>
+
+            {simMode === 'follower_gate' && (
+              <label className="flex items-center gap-2 p-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={isFollowingUser}
+                  onChange={(e) => setIsFollowingUser(e.target.checked)}
+                  className="rounded text-indigo-600 focus:ring-0 w-3.5 h-3.5"
+                />
+                <span className="text-[10px] font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1">
+                  {isFollowingUser ? (
+                    <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                      <Unlock className="w-3 h-3" /> Já Segue @ygorweb
+                    </span>
+                  ) : (
+                    <span className="text-rose-600 dark:text-rose-400 flex items-center gap-1">
+                      <Lock className="w-3 h-3" /> NÃO Segue (Bloquear)
+                    </span>
+                  )}
+                </span>
+              </label>
+            )}
+          </div>
+
           {/* Área de Balões do Instagram Direct */}
-          <div className="flex-1 p-4 overflow-y-auto space-y-3">
+          <div className="flex-1 p-3.5 overflow-y-auto space-y-3">
             {messages.map((m) => (
               <div key={m.id} className={`flex flex-col ${m.sender === 'user' ? 'items-end' : 'items-start'}`}>
                 {m.sender === 'system' ? (
@@ -146,11 +263,13 @@ export const FlowSimulatorModal = ({ onClose }) => {
                   }`}>
                     <p className="leading-relaxed">{m.text}</p>
                     
-                    {/* Botão Interativo da Caixinha */}
+                    {/* Botão Interativo da Caixinha / Trava */}
                     {m.buttonText && (
                       <button
-                        onClick={handleButtonClick}
-                        className="w-full mt-2.5 py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11px] shadow-xs transition-transform active:scale-95 text-center flex items-center justify-center gap-1.5"
+                        onClick={() => handleButtonClick(m.isGate)}
+                        className={`w-full mt-2.5 py-2 px-3 rounded-xl text-white font-bold text-[11px] shadow-xs transition-transform active:scale-95 text-center flex items-center justify-center gap-1.5 ${
+                          m.isGate ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-blue-600 hover:bg-blue-700'
+                        }`}
                       >
                         <span>{m.buttonText}</span>
                       </button>
@@ -207,10 +326,10 @@ export const FlowSimulatorModal = ({ onClose }) => {
                 <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                 <div>
                   <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                    Monitor Anti-Bloqueio em Tempo Real
+                    Monitor Anti-Bloqueio & Trava de Seguidor
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Acompanhe como o algoritmo do Instagram processa cada etapa da conversa.
+                    Acompanhe a verificação do campo Meta <code className="font-mono text-blue-600 dark:text-blue-400">is_user_follow_business</code>.
                   </p>
                 </div>
               </div>
@@ -219,11 +338,15 @@ export const FlowSimulatorModal = ({ onClose }) => {
               </button>
             </div>
 
-            <div className="mt-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 font-mono text-[11px] text-slate-700 dark:text-slate-300 space-y-2 h-80 overflow-y-auto">
+            <div className="mt-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 font-mono text-[11px] text-slate-700 dark:text-slate-300 space-y-2 h-[410px] overflow-y-auto">
               {logTrace.map((log, lidx) => (
                 <div key={lidx} className="flex items-start gap-2">
                   <span className="text-blue-600 dark:text-blue-400 select-none font-bold">&gt;</span>
-                  <span className={log.includes('ABERTA') ? 'text-emerald-600 dark:text-emerald-400 font-bold' : log.includes('Anti-Ban') ? 'text-amber-600 dark:text-amber-400 font-semibold' : ''}>
+                  <span className={
+                    log.includes('TRUE') || log.includes('ABERTA') ? 'text-emerald-600 dark:text-emerald-400 font-bold' :
+                    log.includes('FALSE') || log.includes('BLOQUEADO') ? 'text-rose-600 dark:text-rose-400 font-bold' :
+                    log.includes('Anti-Ban') || log.includes('Trava') ? 'text-amber-600 dark:text-amber-400 font-semibold' : ''
+                  }>
                     {log}
                   </span>
                 </div>
@@ -233,9 +356,9 @@ export const FlowSimulatorModal = ({ onClose }) => {
 
           <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-between">
             <div className="text-xs text-slate-600 dark:text-slate-300 space-y-0.5">
-              <p className="font-bold text-slate-900 dark:text-white">Fluxo 100% Compatível com a Meta</p>
+              <p className="font-bold text-slate-900 dark:text-white">100% Compatível com Diretrizes Meta</p>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Respeitando o teto de 750 respostas por hora e a regra das 24 horas.
+                Garante crescimento de seguidores orgânicos sem risco de bloqueio.
               </p>
             </div>
             <button onClick={onClose} className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-xs font-bold text-white transition-colors">

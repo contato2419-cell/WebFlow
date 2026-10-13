@@ -30,7 +30,35 @@ export async function onRequestPost(context) {
   try {
     const payload = await request.json();
     
-    // Processamento do evento da Meta (comments, messages, messaging_postbacks)
+    // Tratamento de eventos Meta (Comments no Reels, Direct Messages e Cliques em Botões)
+    if (payload.object === 'instagram' || payload.object === 'page') {
+      const entries = payload.entry || [];
+      for (const entry of entries) {
+        // 1. Comentários em Publicações/Reels
+        if (entry.changes) {
+          for (const change of entry.changes) {
+            if (change.field === 'comments') {
+              const commentData = change.value;
+              // Log da detecção do comentário
+              console.log('[Meta Webhook] Comentário recebido:', commentData.text, 'de:', commentData.from?.username);
+            }
+          }
+        }
+
+        // 2. Mensagens e Cliques em Botões (Postbacks)
+        if (entry.messaging) {
+          for (const msg of entry.messaging) {
+            if (msg.postback) {
+              console.log('[Meta Webhook] Postback (Botão Clicado):', msg.postback.title, msg.postback.payload);
+            } else if (msg.message) {
+              console.log('[Meta Webhook] Mensagem Direta recebida:', msg.message.text);
+            }
+          }
+        }
+      }
+    }
+    
+    // Sempre responder 200 OK imediatamente para a Meta não reenviar nem suspender o webhook
     return new Response('EVENT_RECEIVED', {
       status: 200,
       headers: { 'Content-Type': 'text/plain' }

@@ -19,7 +19,8 @@ import {
   ChevronRight,
   X,
   HelpCircle,
-  Sparkles
+  Sparkles,
+  UserCheck
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
@@ -115,6 +116,14 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
     } else if (type === 'delay') {
       newNode.title = 'Smart Delay';
       newNode.data = { delaySeconds: 15, jitter: true };
+    } else if (type === 'follower_gate') {
+      newNode.title = '👤 Trava: Exigir Seguidor';
+      newNode.type = 'follower_gate';
+      newNode.data = {
+        text: 'Oi {{first_name}}! Esse material exclusivo é liberado apenas para quem me segue. Comece a seguir @ygorweb e toque no botão abaixo 👇',
+        buttons: [{ id: 'b_follow_' + Date.now(), title: '✅ Já Comecei a Seguir! Liberar', targetNode: '' }],
+        requireFollow: true
+      };
     }
 
     const updatedNodes = [...currentFlow.nodes, newNode];
@@ -183,6 +192,15 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
           >
             <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
             <span>Caixa Anti-Ban</span>
+          </button>
+
+          <button
+            onClick={() => handleAddNode('follower_gate')}
+            title="Adicionar Trava de Seguidor (Exigir follow para liberar link)"
+            className="px-3 py-1.5 rounded-lg text-xs font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 border border-indigo-200 dark:border-indigo-800 flex items-center gap-1.5 transition-colors"
+          >
+            <UserCheck className="w-3.5 h-3.5 text-indigo-600" />
+            <span>Trava de Seguidor</span>
           </button>
 
           <button
@@ -300,6 +318,7 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
                 <div className={`p-3 border-b flex items-center justify-between rounded-t-xl ${
                   node.type === 'trigger' ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-100 dark:border-emerald-900 text-emerald-800 dark:text-emerald-300' :
                   node.type === 'message' ? 'bg-blue-50 dark:bg-blue-950/40 border-blue-100 dark:border-blue-900 text-blue-800 dark:text-blue-300' :
+                  node.type === 'follower_gate' ? 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-100 dark:border-indigo-900 text-indigo-800 dark:text-indigo-300' :
                   node.type === 'action' ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-100 dark:border-emerald-900 text-emerald-800 dark:text-emerald-300' :
                   node.type === 'condition' ? 'bg-cyan-50 dark:bg-cyan-950/40 border-cyan-100 dark:border-cyan-900 text-cyan-800 dark:text-cyan-300' :
                   'bg-purple-50 dark:bg-purple-950/40 border-purple-100 dark:border-purple-900 text-purple-800 dark:text-purple-300'
@@ -307,6 +326,7 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
                   <div className="flex items-center gap-2">
                     {node.type === 'trigger' && <Zap className="w-4 h-4 text-emerald-600" />}
                     {node.type === 'message' && <MessageSquare className="w-4 h-4 text-blue-600" />}
+                    {node.type === 'follower_gate' && <UserCheck className="w-4 h-4 text-indigo-600" />}
                     {node.type === 'action' && <Zap className="w-4 h-4 text-emerald-600" />}
                     {node.type === 'condition' && <GitBranch className="w-4 h-4 text-cyan-600" />}
                     {node.type === 'delay' && <Clock className="w-4 h-4 text-purple-600" />}
@@ -331,8 +351,14 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
                     </div>
                   )}
 
-                  {node.type === 'message' && (
+                  {(node.type === 'message' || node.type === 'follower_gate') && (
                     <div className="space-y-2">
+                      {node.type === 'follower_gate' && (
+                        <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 text-[10px] text-indigo-700 dark:text-indigo-300 font-bold">
+                          <UserCheck className="w-3 h-3 text-indigo-600" />
+                          <span>Trava: Só envia se seguir o perfil</span>
+                        </div>
+                      )}
                       <p className="text-[11px] text-slate-600 dark:text-slate-300 line-clamp-3 bg-slate-50 dark:bg-slate-800/80 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 leading-relaxed">
                         {node.data?.text || 'Sem texto'}
                       </p>
@@ -406,8 +432,20 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
               />
             </div>
 
-            {selectedNode.type === 'message' && (
+            {(selectedNode.type === 'message' || selectedNode.type === 'follower_gate') && (
               <div className="space-y-4">
+                {selectedNode.type === 'follower_gate' && (
+                  <div className="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 space-y-1.5">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-700 dark:text-indigo-300">
+                      <UserCheck className="w-4 h-4 text-indigo-600" />
+                      <span>Trava Follow-to-Unlock Ativa</span>
+                    </div>
+                    <p className="text-[11px] text-indigo-800 dark:text-indigo-200 leading-relaxed">
+                      O sistema consulta a API da Meta (campo <code className="font-mono bg-indigo-100 dark:bg-indigo-900 px-1 py-0.5 rounded text-[10px]">is_user_follow_business</code>). Se a pessoa não seguir seu perfil, o fluxo fica travado até ela seguir.
+                    </p>
+                  </div>
+                )}
+
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Texto da Mensagem</label>
