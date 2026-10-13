@@ -182,8 +182,6 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
       <div 
         ref={canvasRef}
         onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
         className={`flex-1 h-full relative cursor-grab active:cursor-grabbing overflow-hidden ${
           theme === 'dark' ? 'canvas-grid-dark' : 'canvas-grid-light'
         }`}
@@ -296,8 +294,8 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
 
         {/* Linhas SVG Conectando os Nós */}
         <div 
-          className="w-full h-full transform-origin-0-0"
-          style={{ transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)` }}
+          className="w-full h-full"
+          style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transformOrigin: '0 0' }}
         >
           <svg className="w-[4000px] h-[4000px] absolute inset-0 pointer-events-none">
             {currentFlow.edges?.map((edge, idx) => {
