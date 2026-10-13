@@ -20,7 +20,8 @@ import {
   X,
   HelpCircle,
   Sparkles,
-  UserCheck
+  UserCheck,
+  Lock
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
@@ -117,11 +118,13 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
       newNode.title = 'Smart Delay';
       newNode.data = { delaySeconds: 15, jitter: true };
     } else if (type === 'follower_gate') {
-      newNode.title = '👤 Trava: Exigir Seguidor';
+      newNode.title = '1ª DM: 🔒 Trava de Seguidor';
       newNode.type = 'follower_gate';
       newNode.data = {
-        text: 'Oi {{first_name}}! Esse material exclusivo é liberado apenas para quem me segue. Comece a seguir @ygorweb e toque no botão abaixo 👇',
-        buttons: [{ id: 'b_follow_' + Date.now(), title: '✅ Já Comecei a Seguir! Liberar', targetNode: '' }],
+        text: 'Oi {{first_name}}! Preparei esse material com muito carinho exclusivamente para quem me acompanha aqui no Instagram 🎁\n\nDá um pulinho no meu perfil @ygorweb, começa a me seguir e depois toca no botão abaixo pra eu te enviar na hora 👇',
+        buttons: [{ id: 'b_follow_' + Date.now(), title: '✅ Já estou te seguindo!', targetNode: '' }],
+        fallbackText: 'Opa! Vi aqui que você ainda não começou a me seguir 👀 Dá um pulinho lá no perfil @ygorweb rapidinho, clica em Seguir e aperta no botão de novo que eu já te libero na hora!',
+        profileHandle: '@ygorweb',
         requireFollow: true
       };
     }
@@ -172,17 +175,32 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
             <Play className="w-3.5 h-3.5 fill-white text-white" />
             <span>Testar no Simulador</span>
           </button>
+
+          <button
+            onClick={() => {
+              const gateNode = currentFlow.nodes.find(n => n.type === 'follower_gate');
+              if (gateNode) {
+                setSelectedNodeId(gateNode.id);
+              } else {
+                handleAddNode('follower_gate');
+              }
+            }}
+            className="bg-indigo-600 hover:bg-indigo-700 px-4 py-2.5 rounded-xl text-xs font-bold text-white flex items-center gap-2 shadow-sm transition-all"
+          >
+            <UserCheck className="w-3.5 h-3.5" />
+            <span>🔒 Trava de Seguidor</span>
+          </button>
         </div>
 
         {/* Toolbar de Inserção de Blocos (Estilo ManyChat) */}
         <div className="absolute top-5 right-6 z-20 flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1.5 rounded-xl shadow-sm">
           <button
-            onClick={() => handleAddNode('message')}
-            title="Adicionar Mensagem"
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1.5 transition-colors"
+            onClick={() => handleAddNode('follower_gate')}
+            title="Adicionar Trava de Seguidor (Exigir follow para liberar link)"
+            className="px-3.5 py-1.5 rounded-lg text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-xs flex items-center gap-1.5 transition-colors"
           >
-            <MessageSquare className="w-3.5 h-3.5 text-blue-600" />
-            <span>Mensagem</span>
+            <UserCheck className="w-3.5 h-3.5" />
+            <span>🔒 Trava de Seguidor</span>
           </button>
 
           <button
@@ -195,12 +213,12 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
           </button>
 
           <button
-            onClick={() => handleAddNode('follower_gate')}
-            title="Adicionar Trava de Seguidor (Exigir follow para liberar link)"
-            className="px-3 py-1.5 rounded-lg text-xs font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 border border-indigo-200 dark:border-indigo-800 flex items-center gap-1.5 transition-colors"
+            onClick={() => handleAddNode('message')}
+            title="Adicionar Mensagem"
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1.5 transition-colors"
           >
-            <UserCheck className="w-3.5 h-3.5 text-indigo-600" />
-            <span>Trava de Seguidor</span>
+            <MessageSquare className="w-3.5 h-3.5 text-blue-600" />
+            <span>Mensagem</span>
           </button>
 
           <button
@@ -223,7 +241,7 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
 
           <button
             onClick={() => handleAddNode('delay')}
-            title="Adicionar Atraso / Delay"
+            title="Adicionar Smart Delay"
             className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1.5 transition-colors"
           >
             <Clock className="w-3.5 h-3.5 text-purple-600" />
@@ -231,71 +249,36 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
           </button>
         </div>
 
-        {/* Controles de Zoom Flutuantes no Rodapé */}
-        <div className="absolute bottom-6 left-6 z-20 flex items-center gap-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1 rounded-lg shadow-sm text-slate-600 dark:text-slate-300">
-          <button onClick={() => setZoom(z => Math.max(0.4, z - 0.1))} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded">
-            <ZoomOut className="w-4 h-4" />
-          </button>
-          <span className="text-xs font-mono font-bold px-2">{Math.round(zoom * 100)}%</span>
-          <button onClick={() => setZoom(z => Math.min(1.8, z + 0.1))} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded">
-            <ZoomIn className="w-4 h-4" />
-          </button>
-          <button onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded" title="Centralizar">
-            <RotateCcw className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        {/* SVG de Conexões em Bézier Suave */}
-        <svg 
-          className="absolute inset-0 w-full h-full pointer-events-none"
-          style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transformOrigin: '0 0' }}
-        >
-          <defs>
-            <linearGradient id="edgeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#0066FF" />
-              <stop offset="100%" stopColor="#10B981" />
-            </linearGradient>
-          </defs>
-
-          {currentFlow.edges.map((edge, idx) => {
-            const sourceNode = currentFlow.nodes.find(n => n.id === edge.from);
-            const targetNode = currentFlow.nodes.find(n => n.id === edge.to);
-            if (!sourceNode || !targetNode) return null;
-
-            const sx = sourceNode.position.x + 280;
-            const sy = sourceNode.position.y + 70;
-            const tx = targetNode.position.x;
-            const ty = targetNode.position.y + 70;
-
-            const dx = Math.max(60, Math.abs(tx - sx) * 0.5);
-            const pathData = `M ${sx} ${sy} C ${sx + dx} ${sy}, ${tx - dx} ${ty}, ${tx} ${ty}`;
-
-            return (
-              <g key={idx}>
-                <path
-                  d={pathData}
-                  fill="none"
-                  stroke={theme === 'dark' ? '#334155' : '#E2E8F0'}
-                  strokeWidth="5"
-                />
-                <path
-                  d={pathData}
-                  fill="none"
-                  stroke="url(#edgeGrad)"
-                  strokeWidth="2.5"
-                />
-                <circle cx={tx} cy={ty} r="4.5" fill="#10B981" />
-              </g>
-            );
-          })}
-        </svg>
-
-        {/* Cartões / Blocos Estilo ManyChat */}
+        {/* Linhas SVG Conectando os Nós */}
         <div 
-          className="absolute inset-0 pointer-events-none"
-          style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transformOrigin: '0 0' }}
+          className="w-full h-full transform-origin-0-0"
+          style={{ transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)` }}
         >
-          {currentFlow.nodes.map((node) => {
+          <svg className="w-[4000px] h-[4000px] absolute inset-0 pointer-events-none">
+            {currentFlow.edges?.map((edge, idx) => {
+              const fromNode = currentFlow.nodes.find(n => n.id === edge.from);
+              const toNode = currentFlow.nodes.find(n => n.id === edge.to);
+              if (!fromNode || !toNode) return null;
+
+              const x1 = fromNode.position.x + 280;
+              const y1 = fromNode.position.y + 60;
+              const x2 = toNode.position.x;
+              const y2 = toNode.position.y + 60;
+              const cx1 = x1 + (x2 - x1) * 0.5;
+              const cx2 = x2 - (x2 - x1) * 0.5;
+
+              return (
+                <path
+                  key={idx}
+                  d={`M ${x1} ${y1} C ${cx1} ${y1}, ${cx2} ${y2}, ${x2} ${y2}`}
+                  className="dag-edge"
+                />
+              );
+            })}
+          </svg>
+
+          {/* Renderização dos Blocos Visuais */}
+          {currentFlow.nodes?.map((node) => {
             const isSelected = selectedNodeId === node.id;
             return (
               <div
@@ -303,11 +286,11 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
                 onMouseDown={(e) => handleNodeMouseDown(e, node.id)}
                 style={{
                   transform: `translate(${node.position.x}px, ${node.position.y}px)`,
-                  width: '280px'
+                  width: '290px'
                 }}
                 className={`absolute pointer-events-auto rounded-xl bg-white dark:bg-slate-900 border transition-all cursor-move shadow-sm ${
                   isSelected 
-                    ? 'border-blue-500 shadow-md ring-2 ring-blue-500/20' 
+                    ? 'border-indigo-500 shadow-md ring-2 ring-indigo-500/20' 
                     : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
                 }`}
               >
@@ -317,20 +300,20 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
                 {/* Cabeçalho do Bloco ManyChat */}
                 <div className={`p-3 border-b flex items-center justify-between rounded-t-xl ${
                   node.type === 'trigger' ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-100 dark:border-emerald-900 text-emerald-800 dark:text-emerald-300' :
-                  node.type === 'message' ? 'bg-blue-50 dark:bg-blue-950/40 border-blue-100 dark:border-blue-900 text-blue-800 dark:text-blue-300' :
                   node.type === 'follower_gate' ? 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-100 dark:border-indigo-900 text-indigo-800 dark:text-indigo-300' :
+                  node.type === 'message' ? 'bg-blue-50 dark:bg-blue-950/40 border-blue-100 dark:border-blue-900 text-blue-800 dark:text-blue-300' :
                   node.type === 'action' ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-100 dark:border-emerald-900 text-emerald-800 dark:text-emerald-300' :
                   node.type === 'condition' ? 'bg-cyan-50 dark:bg-cyan-950/40 border-cyan-100 dark:border-cyan-900 text-cyan-800 dark:text-cyan-300' :
                   'bg-purple-50 dark:bg-purple-950/40 border-purple-100 dark:border-purple-900 text-purple-800 dark:text-purple-300'
                 }`}>
                   <div className="flex items-center gap-2">
                     {node.type === 'trigger' && <Zap className="w-4 h-4 text-emerald-600" />}
-                    {node.type === 'message' && <MessageSquare className="w-4 h-4 text-blue-600" />}
                     {node.type === 'follower_gate' && <UserCheck className="w-4 h-4 text-indigo-600" />}
+                    {node.type === 'message' && <MessageSquare className="w-4 h-4 text-blue-600" />}
                     {node.type === 'action' && <Zap className="w-4 h-4 text-emerald-600" />}
                     {node.type === 'condition' && <GitBranch className="w-4 h-4 text-cyan-600" />}
                     {node.type === 'delay' && <Clock className="w-4 h-4 text-purple-600" />}
-                    <span className="text-xs font-bold truncate max-w-[170px]">{node.title || node.type}</span>
+                    <span className="text-xs font-bold truncate max-w-[180px]">{node.title || node.type}</span>
                   </div>
                   <button 
                     onClick={(e) => { e.stopPropagation(); handleDeleteNode(node.id); }}
@@ -346,20 +329,37 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
                     <div className="space-y-1">
                       <p className="text-[11px] text-slate-500 dark:text-slate-400">Gatilho de Comentário:</p>
                       <span className="font-mono text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300 font-bold border border-blue-200 dark:border-blue-800">
-                        PALAVRA: {node.data?.keyword || 'QUALQUER'}
+                        PALAVRA: {node.data?.keyword || 'LISTA'}
                       </span>
                     </div>
                   )}
 
-                  {(node.type === 'message' || node.type === 'follower_gate') && (
+                  {node.type === 'follower_gate' && (
                     <div className="space-y-2">
-                      {node.type === 'follower_gate' && (
-                        <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 text-[10px] text-indigo-700 dark:text-indigo-300 font-bold">
-                          <UserCheck className="w-3 h-3 text-indigo-600" />
-                          <span>Trava: Só envia se seguir o perfil</span>
+                      <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 text-[10px] text-indigo-700 dark:text-indigo-300 font-bold">
+                        <UserCheck className="w-3 h-3 text-indigo-600" />
+                        <span>🔒 Só libera se seguir @ygorweb</span>
+                      </div>
+                      <p className="text-[11px] text-slate-600 dark:text-slate-300 line-clamp-3 bg-slate-50 dark:bg-slate-800/80 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 leading-relaxed whitespace-pre-line">
+                        {node.data?.text || 'Sem texto'}
+                      </p>
+
+                      {node.data?.buttons && node.data.buttons.length > 0 && (
+                        <div className="space-y-1.5 pt-1">
+                          {node.data.buttons.map((btn, bidx) => (
+                            <div key={bidx} className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-[11px] text-indigo-700 dark:text-indigo-300 font-bold">
+                              <span>{btn.title}</span>
+                              <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
+                            </div>
+                          ))}
                         </div>
                       )}
-                      <p className="text-[11px] text-slate-600 dark:text-slate-300 line-clamp-3 bg-slate-50 dark:bg-slate-800/80 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 leading-relaxed">
+                    </div>
+                  )}
+
+                  {node.type === 'message' && (
+                    <div className="space-y-2">
+                      <p className="text-[11px] text-slate-600 dark:text-slate-300 line-clamp-3 bg-slate-50 dark:bg-slate-800/80 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 leading-relaxed whitespace-pre-line">
                         {node.data?.text || 'Sem texto'}
                       </p>
 
@@ -428,24 +428,102 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
                   const updatedNodes = currentFlow.nodes.map(n => n.id === selectedNode.id ? { ...n, title: e.target.value } : n);
                   updateFlow(currentFlow.id, { nodes: updatedNodes });
                 }}
-                className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 font-medium"
               />
             </div>
 
-            {(selectedNode.type === 'message' || selectedNode.type === 'follower_gate') && (
+            {/* Configurações Específicas da Trava de Seguidor */}
+            {selectedNode.type === 'follower_gate' && (
               <div className="space-y-4">
-                {selectedNode.type === 'follower_gate' && (
-                  <div className="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 space-y-1.5">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-700 dark:text-indigo-300">
-                      <UserCheck className="w-4 h-4 text-indigo-600" />
-                      <span>Trava Follow-to-Unlock Ativa</span>
-                    </div>
-                    <p className="text-[11px] text-indigo-800 dark:text-indigo-200 leading-relaxed">
-                      O sistema consulta a API da Meta (campo <code className="font-mono bg-indigo-100 dark:bg-indigo-900 px-1 py-0.5 rounded text-[10px]">is_user_follow_business</code>). Se a pessoa não seguir seu perfil, o fluxo fica travado até ela seguir.
-                    </p>
+                <div className="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 space-y-1">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-700 dark:text-indigo-300">
+                    <UserCheck className="w-4 h-4 text-indigo-600" />
+                    <span>Trava de Seguidor Ativa</span>
                   </div>
-                )}
+                  <p className="text-[11px] text-indigo-800 dark:text-indigo-200 leading-relaxed">
+                    Este bloco só libera o link se a pessoa seguir seu perfil no Instagram. A comunicação é 100% humanizada, sem jargões.
+                  </p>
+                </div>
 
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                    Seu Perfil no Instagram
+                  </label>
+                  <input
+                    type="text"
+                    value={selectedNode.data?.profileHandle || '@ygorweb'}
+                    onChange={(e) => {
+                      const updatedNodes = currentFlow.nodes.map(n => n.id === selectedNode.id ? {
+                        ...n,
+                        data: { ...n.data, profileHandle: e.target.value }
+                      } : n);
+                      updateFlow(currentFlow.id, { nodes: updatedNodes });
+                    }}
+                    className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                    Mensagem de Convite para Seguir
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={selectedNode.data?.text || ''}
+                    onChange={(e) => {
+                      const updatedNodes = currentFlow.nodes.map(n => n.id === selectedNode.id ? {
+                        ...n,
+                        data: { ...n.data, text: e.target.value }
+                      } : n);
+                      updateFlow(currentFlow.id, { nodes: updatedNodes });
+                    }}
+                    className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white leading-relaxed font-sans"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                    Lembrete Amigável (se clicar antes de seguir)
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={selectedNode.data?.fallbackText || 'Opa! Vi aqui que você ainda não começou a me seguir 👀 Dá um pulinho lá no perfil @ygorweb rapidinho, clica em Seguir e aperta no botão de novo que eu já te libero na hora!'}
+                    onChange={(e) => {
+                      const updatedNodes = currentFlow.nodes.map(n => n.id === selectedNode.id ? {
+                        ...n,
+                        data: { ...n.data, fallbackText: e.target.value }
+                      } : n);
+                      updateFlow(currentFlow.id, { nodes: updatedNodes });
+                    }}
+                    className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white leading-relaxed font-sans"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                    Botão de Confirmação do Seguidor
+                  </label>
+                  {selectedNode.data?.buttons?.map((btn, bidx) => (
+                    <div key={btn.id || bidx} className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                      <input
+                        type="text"
+                        value={btn.title}
+                        onChange={(e) => {
+                          const newButtons = selectedNode.data.buttons.map(b => b.id === btn.id ? { ...b, title: e.target.value } : b);
+                          const updatedNodes = currentFlow.nodes.map(n => n.id === selectedNode.id ? { ...n, data: { ...n.data, buttons: newButtons } } : n);
+                          updateFlow(currentFlow.id, { nodes: updatedNodes });
+                        }}
+                        className="w-full px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-semibold"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Configurações de Mensagem Normal */}
+            {selectedNode.type === 'message' && (
+              <div className="space-y-4">
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Texto da Mensagem</label>
@@ -471,7 +549,6 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
                   />
                 </div>
 
-                {/* Botões Interativos / Caixinha */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Botões de Confirmação</label>
@@ -533,7 +610,7 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
                     updateFlow(currentFlow.id, { nodes: updatedNodes });
                   }}
                   className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-mono uppercase"
-                  placeholder="EX: QUERO"
+                  placeholder="EX: LISTA"
                 />
               </div>
             )}

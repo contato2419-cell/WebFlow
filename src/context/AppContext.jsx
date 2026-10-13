@@ -3,15 +3,15 @@ import { getSupabaseClient } from '../lib/supabase';
 
 const AppContext = createContext();
 
-// Mock inicial de fluxos predefinidos no padrão ManyChat
+// Mock inicial de fluxos predefinidos no padrão ManyChat com Trava de Seguidor
 const INITIAL_FLOWS = [
   {
     id: 'flow_01_reels_anti_ban',
-    name: 'Reels: Comentário → Caixinha Anti-Ban → Link Seguro',
+    name: 'Reels: Comentário → 🔒 Trava de Seguidor → Link Seguro',
     channel: 'instagram',
     active: true,
     folder: 'Tráfego & Leads',
-    lastModified: 'Hoje, 14:10',
+    lastModified: 'Hoje, 19:35',
     stats: { sent: 1420, openRate: '98.4%', ctr: '64.2%' },
     nodes: [
       {
@@ -20,22 +20,25 @@ const INITIAL_FLOWS = [
         title: 'Gatilho: Comentário no Reels',
         position: { x: 50, y: 150 },
         data: {
-          keyword: 'QUERO',
+          keyword: 'LISTA',
           matchType: 'contains',
           antiBanJitter: 12,
           spintaxCount: 8
         }
       },
       {
-        id: 'node_prompt_box',
-        type: 'message',
-        title: '1ª DM: Caixinha de Confirmação (Anti-Spam)',
-        position: { x: 420, y: 120 },
+        id: 'node_follower_gate',
+        type: 'follower_gate',
+        title: '1ª DM: 🔒 Trava de Seguidor (Exigir Follow)',
+        position: { x: 400, y: 120 },
         data: {
-          text: 'Oi {{first_name}}! Vi que você comentou no vídeo querendo o material exclusivo. Para eu liberar o seu acesso agora, toque no botão abaixo 👇',
+          text: 'Oi {{first_name}}! Preparei esse material com muito carinho exclusivamente para quem me acompanha aqui no Instagram 🎁\n\nDá um pulinho no meu perfil @ygorweb, começa a me seguir e depois toca no botão abaixo pra eu te mandar agora 👇',
           buttons: [
-            { id: 'b1', title: '🚀 Quero Acessar Agora', targetNode: 'node_action_tag' }
-          ]
+            { id: 'b_follow', title: '✅ Já estou te seguindo!', targetNode: 'node_action_tag' }
+          ],
+          fallbackText: 'Opa! Vi aqui que você ainda não começou a me seguir 👀\n\nDá um pulinho lá no perfil @ygorweb rapidinho, clica em Seguir e aperta no botão de novo que eu já te libero na hora!',
+          profileHandle: '@ygorweb',
+          requireFollow: true
         }
       },
       {
@@ -45,7 +48,7 @@ const INITIAL_FLOWS = [
         position: { x: 790, y: 120 },
         data: {
           actions: [
-            { type: 'add_tag', value: 'lead_qualificado_reels' },
+            { type: 'add_tag', value: 'seguidor_confirmado' },
             { type: 'set_field', field: 'Origem', value: 'Instagram_Reels' }
           ],
           targetNode: 'node_send_link'
@@ -57,16 +60,16 @@ const INITIAL_FLOWS = [
         title: '2ª DM: Entrega do Link Seguro',
         position: { x: 1150, y: 120 },
         data: {
-          text: 'Perfeito! Como você confirmou, aqui está o seu acesso direto ao material e grupo VIP: 📲 https://wa.me/5511999998888?text=QueroMeuAcesso',
+          text: 'Show de bola, {{first_name}}! Muito obrigado por acompanhar meu trabalho! 🎉 Aqui está o seu acesso direto com todos os detalhes: 📲 https://wa.me/5511999998888?text=QueroMeuAcesso',
           buttons: [
-            { id: 'b2', title: 'Entrar no Grupo VIP', url: 'https://wa.me/5511999998888' }
+            { id: 'b2', title: '👉 Acessar Agora no WhatsApp', url: 'https://wa.me/5511999998888' }
           ]
         }
       }
     ],
     edges: [
-      { from: 'node_start', to: 'node_prompt_box', port: 'output' },
-      { from: 'node_prompt_box', to: 'node_action_tag', port: 'b1' },
+      { from: 'node_start', to: 'node_follower_gate', port: 'output' },
+      { from: 'node_follower_gate', to: 'node_action_tag', port: 'b_follow' },
       { from: 'node_action_tag', to: 'node_send_link', port: 'output' }
     ]
   },
@@ -109,10 +112,10 @@ const INITIAL_FLOWS = [
 const INITIAL_TRIGGERS = [
   {
     id: 'trig_01',
-    name: 'Reels: Entrega de Material Gratuito',
+    name: 'Reels: Entrega de Material Exclusivo',
     postUrl: 'https://instagram.com/p/C8x9Y12z34',
-    keyword: 'QUERO',
-    matchType: 'exact',
+    keyword: 'LISTA',
+    matchType: 'contains',
     channel: 'instagram',
     active: true,
     delaySeconds: 15,
@@ -138,38 +141,21 @@ const INITIAL_CONTACTS = [
     handle: '@ygorsouza',
     channel: 'instagram',
     phone: '+55 11 99999-8888',
-    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop',
-    tags: ['lead_qualificado_reels', 'cliente_vip'],
-    customFields: { Origem: 'Instagram_Reels', SaldoPontos: 150 },
-    lastInteraction: 'Há 12 minutos',
-    windowHoursRemaining: 23.8,
-    status: 'active'
+    status: 'Seguidor Verificado',
+    tags: ['lead_engajado_reels', 'seguidor_confirmado', 'vip'],
+    lastInteraction: 'Hoje, 14:02',
+    conversationsCount: 12
   },
   {
     id: 'sub_002',
     name: 'Mariana Costa',
-    handle: '@mari_costa',
+    handle: '+55 21 98877-6655',
     channel: 'whatsapp',
     phone: '+55 21 98877-6655',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop',
-    tags: ['lojista_atacado'],
-    customFields: { Estado: 'RJ', Segmento: 'Moda' },
-    lastInteraction: 'Há 2 horas',
-    windowHoursRemaining: 22.0,
-    status: 'active'
-  },
-  {
-    id: 'sub_003',
-    name: 'Lucas Mendes',
-    handle: '@lucasmendes',
-    channel: 'instagram',
-    phone: '+55 31 97766-5544',
-    avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=100&h=100&fit=crop',
-    tags: ['aguardando_whatsapp'],
-    customFields: { Origem: 'Direct' },
-    lastInteraction: 'Ontem',
-    windowHoursRemaining: 4.5,
-    status: 'active'
+    status: 'Em Atendimento',
+    tags: ['whatsapp_inbound', 'atacado_interessado'],
+    lastInteraction: 'Hoje, 13:45',
+    conversationsCount: 4
   }
 ];
 
@@ -180,16 +166,16 @@ const INITIAL_CONVERSATIONS = [
     contactName: 'Ygor Souza',
     handle: '@ygorsouza',
     channel: 'instagram',
-    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop',
     botPaused: false,
-    lastMessage: 'Perfeito! Como você confirmou, aqui está o seu acesso direto...',
+    lastMessage: 'Show de bola, Ygor! Muito obrigado por acompanhar meu trabalho! 🎉',
     lastTime: '14:02',
     unread: false,
     messages: [
-      { id: 'm1', sender: 'user', text: 'QUERO', time: '14:00' },
-      { id: 'm2', sender: 'bot', text: 'Oi Ygor! Vi que você comentou no vídeo querendo o material exclusivo. Para eu liberar o seu acesso agora, toque no botão abaixo 👇', time: '14:00', button: '🚀 Quero Acessar Agora' },
-      { id: 'm3', sender: 'user', text: '[Clicou em: 🚀 Quero Acessar Agora]', time: '14:01' },
-      { id: 'm4', sender: 'bot', text: 'Perfeito! Como você confirmou, aqui está o seu acesso direto ao material e grupo VIP: 📲 https://wa.me/5511999998888', time: '14:02' }
+      { id: 'm1', sender: 'user', text: 'LISTA', time: '14:00' },
+      { id: 'm2', sender: 'bot', text: 'Oi Ygor! Preparei esse material com muito carinho exclusivamente para quem me acompanha aqui no Instagram 🎁 Dá um pulinho no meu perfil @ygorweb, começa a me seguir e depois toca no botão abaixo pra eu te enviar na hora 👇', time: '14:00', button: '✅ Já estou te seguindo!' },
+      { id: 'm3', sender: 'user', text: '[Clicou em: ✅ Já estou te seguindo!]', time: '14:01' },
+      { id: 'm4', sender: 'bot', text: 'Show de bola, Ygor! Muito obrigado por acompanhar meu trabalho! 🎉 Aqui está o seu acesso direto com todos os detalhes: 📲 https://wa.me/5511999998888', time: '14:02' }
     ]
   },
   {
@@ -212,7 +198,7 @@ const INITIAL_CONVERSATIONS = [
 ];
 
 export const AppProvider = ({ children }) => {
-  const [currentView, setCurrentView] = useState('dashboard');
+  const [currentView, setCurrentView] = useState('flows'); // Abre diretamente no Flow Builder para fácil visualização
   
   // Tema: 'light' por padrão para a interface limpa ManyChat
   const [theme, setTheme] = useState(() => {
@@ -232,31 +218,39 @@ export const AppProvider = ({ children }) => {
     setTheme(prev => prev === 'light' ? 'dark' : 'light');
   };
 
-  // Estados principais
+  // Estados principais com garantia de Trava de Seguidor
   const [flows, setFlows] = useState(() => {
-    const saved = localStorage.getItem('webflow_flows') || localStorage.getItem('vitrixflow_flows');
-    return saved ? JSON.parse(saved) : INITIAL_FLOWS;
+    const saved = localStorage.getItem('webflow_flows_v5');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.some(f => f.nodes?.some(n => n.type === 'follower_gate'))) {
+          return parsed;
+        }
+      } catch (e) {}
+    }
+    return INITIAL_FLOWS;
   });
 
   const [triggers, setTriggers] = useState(() => {
-    const saved = localStorage.getItem('webflow_triggers') || localStorage.getItem('vitrixflow_triggers');
+    const saved = localStorage.getItem('webflow_triggers_v5');
     return saved ? JSON.parse(saved) : INITIAL_TRIGGERS;
   });
 
   const [contacts, setContacts] = useState(() => {
-    const saved = localStorage.getItem('webflow_contacts') || localStorage.getItem('vitrixflow_contacts');
+    const saved = localStorage.getItem('webflow_contacts');
     return saved ? JSON.parse(saved) : INITIAL_CONTACTS;
   });
 
   const [conversations, setConversations] = useState(() => {
-    const saved = localStorage.getItem('webflow_conversations') || localStorage.getItem('vitrixflow_conversations');
+    const saved = localStorage.getItem('webflow_conversations_v5');
     return saved ? JSON.parse(saved) : INITIAL_CONVERSATIONS;
   });
 
   const [channels, setChannels] = useState(() => {
-    const saved = localStorage.getItem('webflow_channels') || localStorage.getItem('vitrixflow_channels');
+    const saved = localStorage.getItem('webflow_channels');
     return saved ? JSON.parse(saved) : {
-      instagram: { connected: false, accountName: '', pageId: '', verified: false },
+      instagram: { connected: false, accountName: '@ygorweb', pageId: '1299815348552748', verified: true },
       whatsapp: { connected: false, number: '', wabaId: '', verified: false },
       messenger: { connected: false, pageId: '' },
       telegram: { connected: false, botUsername: '' }
@@ -267,11 +261,11 @@ export const AppProvider = ({ children }) => {
 
   // Sincronização localStorage
   useEffect(() => {
-    localStorage.setItem('webflow_flows', JSON.stringify(flows));
+    localStorage.setItem('webflow_flows_v5', JSON.stringify(flows));
   }, [flows]);
 
   useEffect(() => {
-    localStorage.setItem('webflow_triggers', JSON.stringify(triggers));
+    localStorage.setItem('webflow_triggers_v5', JSON.stringify(triggers));
   }, [triggers]);
 
   useEffect(() => {
@@ -279,7 +273,7 @@ export const AppProvider = ({ children }) => {
   }, [contacts]);
 
   useEffect(() => {
-    localStorage.setItem('webflow_conversations', JSON.stringify(conversations));
+    localStorage.setItem('webflow_conversations_v5', JSON.stringify(conversations));
   }, [conversations]);
 
   useEffect(() => {
@@ -295,7 +289,7 @@ export const AppProvider = ({ children }) => {
     const newId = 'flow_' + Date.now();
     const newFlow = {
       id: newId,
-      name: name || 'Novo Fluxo Automatizado',
+      name: name || 'Novo Fluxo com Trava de Seguidor',
       channel: channel || 'instagram',
       active: true,
       folder: 'Geral',
@@ -305,20 +299,23 @@ export const AppProvider = ({ children }) => {
         {
           id: 'node_start',
           type: 'trigger',
-          title: 'Ponto de Partida',
+          title: 'Gatilho: Comentário no Reel',
           position: { x: 50, y: 150 },
-          data: { keyword: 'COMEÇAR' }
+          data: { keyword: 'LISTA' }
         },
         {
-          id: 'node_msg_1',
-          type: 'message',
-          title: 'Primeira Mensagem',
+          id: 'node_follower_gate',
+          type: 'follower_gate',
+          title: '1ª DM: 🔒 Trava de Seguidor',
           position: { x: 420, y: 150 },
-          data: { text: 'Olá {{first_name}}! Como posso te ajudar hoje?', buttons: [] }
+          data: {
+            text: 'Oi {{first_name}}! Preparei esse material exclusivamente para quem me segue aqui no Instagram 🎁 Dá uma olhada no perfil @ygorweb, começa a me seguir e clica no botão abaixo pra liberar 👇',
+            buttons: [{ id: 'b_f', title: '✅ Já estou te seguindo!', targetNode: '' }]
+          }
         }
       ],
       edges: [
-        { from: 'node_start', to: 'node_msg_1', port: 'output' }
+        { from: 'node_start', to: 'node_follower_gate', port: 'output' }
       ]
     };
     setFlows(prev => [newFlow, ...prev]);
