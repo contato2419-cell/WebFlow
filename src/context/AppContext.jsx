@@ -256,8 +256,8 @@ export const AppProvider = ({ children }) => {
   const [channels, setChannels] = useState(() => {
     const saved = localStorage.getItem('webflow_channels') || localStorage.getItem('vitrixflow_channels');
     return saved ? JSON.parse(saved) : {
-      instagram: { connected: true, accountName: '@suaempresa.oficial', pageId: '10492817481920', verified: true },
-      whatsapp: { connected: true, number: '+55 (11) 99999-8888', wabaId: 'waba_99410293', verified: true },
+      instagram: { connected: false, accountName: '', pageId: '', verified: false },
+      whatsapp: { connected: false, number: '', wabaId: '', verified: false },
       messenger: { connected: false, pageId: '' },
       telegram: { connected: false, botUsername: '' }
     };

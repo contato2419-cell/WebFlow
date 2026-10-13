@@ -60,6 +60,24 @@ export const ChannelsView = () => {
     localStorage.setItem('webflow_meta_verify_token', verifyToken);
     localStorage.setItem('webflow_meta_ig_token', igToken);
     localStorage.setItem('webflow_meta_waba_token', wabaToken);
+
+    // Atualiza status de conexão dos canais
+    const updatedChannels = {
+      ...channels,
+      instagram: {
+        ...channels.instagram,
+        connected: Boolean(channels.instagram.accountName && igToken),
+        verified: Boolean(igToken)
+      },
+      whatsapp: {
+        ...channels.whatsapp,
+        connected: Boolean(channels.whatsapp.number && wabaToken),
+        verified: Boolean(wabaToken)
+      }
+    };
+    setChannels(updatedChannels);
+    localStorage.setItem('webflow_channels', JSON.stringify(updatedChannels));
+
     setSaveStatus(true);
     setTimeout(() => setSaveStatus(false), 2500);
   };
@@ -235,11 +253,11 @@ export const ChannelsView = () => {
                   type="text"
                   value={channels.instagram.pageId}
                   onChange={(e) => setChannels({ ...channels, instagram: { ...channels.instagram, pageId: e.target.value } })}
-                  placeholder="Ex: 10492817481920"
-                  className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-blue-500"
+                  placeholder="Cole o ID da sua Página (ex: 123456789...)"
+                  className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-blue-500 text-xs"
                 />
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
-                  Encontrado nas <em>Configurações da Página do Facebook → Sobre → ID da Página</em>.
+                <p className="text-[10px] text-blue-600 dark:text-blue-400 mt-1 font-medium">
+                  💡 <strong>Onde achar em 5 segundos:</strong> No Meta Business Suite, clique no menu da esquerda em <strong>Contas → Páginas</strong> e copie o número de <em>Identificação</em> da sua página (ex: da sua página VitrixApp).
                 </p>
               </div>
 
