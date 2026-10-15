@@ -44,20 +44,20 @@ export const CommentsTriggerView = () => {
   };
 
   return (
-    <div className="p-8 space-y-8 max-w-7xl mx-auto animate-in fade-in duration-300">
+    <div className="p-3 sm:p-6 md:p-8 space-y-4 sm:space-y-6 md:space-y-8 max-w-7xl mx-auto animate-in fade-in duration-300">
       {/* Header Limpo Estilo ManyChat */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold font-heading text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
-              <Sparkles className="w-6 h-6 text-amber-500" />
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-xl sm:text-2xl font-bold font-heading text-slate-900 dark:text-white tracking-tight flex items-center gap-2 sm:gap-2.5">
+              <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-amber-500" />
               Gatilhos de Comentários no Reels
             </h1>
-            <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400 border border-blue-200 dark:border-blue-800 font-semibold">
-              ManyChat Growth Tool
+            <span className="text-[11px] sm:text-xs px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400 border border-blue-200 dark:border-blue-800 font-semibold">
+              Growth Tool • Reels
             </span>
           </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
             Responda automaticamente a quem comentar no seu Reel e envie a mensagem privada com o botão no Direct.
           </p>
         </div>

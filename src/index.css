@@ -82,14 +82,14 @@ h1, h2, h3, h4, .font-heading {
   background-size: 20px 20px;
 }
 
-/* Card estilo ManyChat */
-.manychat-card {
+/* Card estilo WebFlow */
+.webflow-card {
   background-color: #FFFFFF;
   border: 1px solid #E2E8F0;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
   border-radius: 0.75rem;
 }
-.dark .manychat-card {
+.dark .webflow-card {
   background-color: #111827;
   border-color: #1F2937;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
@@ -99,7 +99,7 @@ h1, h2, h3, h4, .font-heading {
 .node-handle-in {
   position: absolute;
   left: -8px;
-  top: 50%;
+  top: 50px;
   transform: translateY(-50%);
   width: 16px;
   height: 16px;
@@ -115,7 +115,7 @@ h1, h2, h3, h4, .font-heading {
 .node-handle-out {
   position: absolute;
   right: -8px;
-  top: 50%;
+  top: 50px;
   transform: translateY(-50%);
   width: 16px;
   height: 16px;
@@ -135,3 +135,33 @@ h1, h2, h3, h4, .font-heading {
 .node-handle-in:hover, .node-handle-out:hover {
   transform: translateY(-50%) scale(1.3);
 }
+
+/* Conexões (Edges) do Grafo DAG */
+.dag-edge {
+  fill: none;
+  stroke: #6366F1;
+  stroke-width: 2.5px;
+  stroke-linecap: round;
+  transition: stroke 0.2s, stroke-width 0.2s;
+}
+
+.dag-edge:hover {
+  stroke: #4F46E5;
+  stroke-width: 4px;
+}
+
+.dag-edge-active {
+  fill: none;
+  stroke: #3B82F6;
+  stroke-width: 3px;
+  stroke-linecap: round;
+  stroke-dasharray: 6 6;
+  animation: dagDash 0.8s linear infinite;
+}
+
+@keyframes dagDash {
+  to {
+    stroke-dashoffset: -12;
+  }
+}
+

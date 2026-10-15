@@ -1,5 +1,61 @@
-// Cloudflare Pages Function: Webhook Oficial da Meta (Instagram & WhatsApp)
-// Processa verificação de desafio (hub.challenge) e eventos em tempo real
+// Cloudflare Pages Function: Webhook Oficial da Meta (Instagram Direct & Comentários)
+// REA: Arquitetura Estilo ManyChat com Trava Rigorosa de Seguidor, Kill-Switch Global e Zero Mensagens Não-Solicitadas
+
+const PUBLIC_REPLIES = [
+  "Acabei de te enviar no direct! Dá uma olhada 🚀",
+  "Prontinho, já mandei lá nas suas mensagens ✨",
+  "Dá uma olhadinha no seu direct, preparei tudo pra você! 📩",
+  "Enviado com sucesso! Confere lá nas mensagens privadas 😉",
+  "Te chamei no direct com todos os detalhes! 📲",
+  "Chegou aí? Acabei de te mandar lá no chat 💥",
+  "Informações enviadas! Confere a sua caixa de entrada 📥",
+  "Mandei lá no direct, aproveita! 🎯"
+];
+
+const DEFAULT_STATE = {
+  is_active: false,
+  keyword: 'LISTA',
+  delaySeconds: 15,
+  antiBanJitter: 8,
+  firstDmTitle: 'Me segue ai pra min te enviar ingrato(a) 🚀',
+  firstDmSubtitle: 'Tô postando vídeo assim toda semana! Clica no botão abaixo pra liberar seu link 👇',
+  buttonText: '✅ Já estou te seguindo!',
+  finalLinkMessage: `Tá na mão🚀 \nhttps://x.com/Ithielix/status/2109527114760208745\n\nLink do melhor mousepad de 2026 🏆\nhttps://vt.tiktok.com/ZS9UR1CkPgovL-hgiWV/`,
+  travaReminder: `Opa! Vi aqui que você ainda não começou a me seguir 👀\n\nDá um pulinho lá no perfil @ygorweb rapidinho, clica em Seguir e aperta no botão de novo que eu já te libero na hora!`
+};
+
+const CF_ACCOUNT_ID = 'be7db94a293732762035a5c23126dfae';
+const CF_KV_ID = '6ffd8aa59e6a43ebaee8c87a7dd5ceb1';
+const CF_TOKEN = '';
+
+async function getStoredState(env) {
+  if (env.WEBFLOW_KV) {
+    try {
+      const stored = await env.WEBFLOW_KV.get('FLOW_STATE');
+      if (stored) return JSON.parse(stored);
+    } catch (e) {}
+  }
+
+  try {
+    const res = await fetch(`https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/storage/kv/namespaces/${CF_KV_ID}/values/FLOW_STATE`, {
+      headers: { 'Authorization': `Bearer ${CF_TOKEN}` }
+    });
+    if (res.ok) {
+      const text = await res.text();
+      return JSON.parse(text);
+    }
+  } catch (e) {}
+
+  return null;
+}
+
+// Casamento estrito por palavra inteira (impede falso positivo em 'especialista', 'paulista', etc.)
+function matchesKeywordStrict(text, keyword) {
+  if (!text || !keyword) return false;
+  const cleanKw = keyword.trim().toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`(?:^|\\s|[.,!?;])${cleanKw}(?:$|\\s|[.,!?;])`, 'i');
+  return regex.test(text.toLowerCase());
+}
 
 export async function onRequestGet(context) {
   const { request, env } = context;
@@ -11,7 +67,6 @@ export async function onRequestGet(context) {
 
   const EXPECTED_TOKEN = env.META_VERIFY_TOKEN || 'webflow_meta_token_secret_2026';
 
-  // Se o token bater e o modo for subscribe, responde o challenge como texto puro
   if (mode === 'subscribe' && (token === EXPECTED_TOKEN || token === 'webflow_meta_token_secret_2026')) {
     return new Response(challenge, {
       status: 200,
@@ -26,44 +81,245 @@ export async function onRequestGet(context) {
 }
 
 export async function onRequestPost(context) {
-  const { request } = context;
+  const { request, env } = context;
+  const PAGE_TOKEN = env.META_PAGE_ACCESS_TOKEN || 'EAAdPoo2JfNUBSrpDVADHAZBWNClCWCaLngml0bbTRS5dv0I8RX4jceRChZBi3pZBkg6xmr3MIfMQSTvvMMLJG8RP4lfn97w2M0xZAbdWFA9BETDkfzfjP3MMlO1eoIMAehygJsCdinlt1g2w1Vqx3lZBnb0ZBmHUti2plKKatMZClKW2SIKL3jGwXOwipcvk65pZCHHbK0dB';
+  const MY_PAGE_ID = '1299815346552748';
+  const MY_IG_ID = '17841428469294913';
+
   try {
+    // 1. CARREGAMENTO DO ESTADO GLOBAL DA AUTOMAÇÃO (KILL-SWITCH VIA KV COM FALLBACK)
+    const stored = await getStoredState(env);
+    const state = stored ? { ...DEFAULT_STATE, ...stored } : DEFAULT_STATE;
+
+    // REGRA DE SEGURANÇA 1: SE A AUTOMAÇÃO ESTIVER DESLIGADA NO WEBFLOW, ABORTA IMEDIATAMENTE!
+    if (!state.is_active) {
+      console.log('[WebFlow Webhook] Automação DESLIGADA no painel. Nenhum disparo permitido.');
+      return new Response('AUTOMATION_DISABLED', {
+        status: 200,
+        headers: { 'Content-Type': 'text/plain' }
+      });
+    }
+
     const payload = await request.json();
-    
-    // Tratamento de eventos Meta (Comments no Reels, Direct Messages e Cliques em Botões)
-    if (payload.object === 'instagram' || payload.object === 'page') {
-      const entries = payload.entry || [];
-      for (const entry of entries) {
-        // 1. Comentários em Publicações/Reels
-        if (entry.changes) {
-          for (const change of entry.changes) {
-            if (change.field === 'comments') {
-              const commentData = change.value;
-              // Log da detecção do comentário
-              console.log('[Meta Webhook] Comentário recebido:', commentData.text, 'de:', commentData.from?.username);
+    if (!payload || (payload.object !== 'instagram' && payload.object !== 'page')) {
+      return new Response('EVENT_RECEIVED', { status: 200 });
+    }
+
+    const entries = payload.entry || [];
+    for (const entry of entries) {
+      
+      // =========================================================================
+      // 2. PROCESSAMENTO DE COMENTÁRIOS EM POSTS / REELS
+      // =========================================================================
+      if (entry.changes) {
+        for (const change of entry.changes) {
+          if (change.field === 'comments') {
+            const commentData = change.value;
+            const commentText = (commentData.text || '').trim();
+            const username = commentData.from?.username;
+
+            // Ignora comentários feitos pelo próprio dono da conta (@ygorweb)
+            if (!username || username.toLowerCase() === 'ygorweb') continue;
+
+            // REGRA DE SEGURANÇA 2: CASAMENTO ESTRITO DE PALAVRA-CHAVE
+            // Só dispara se o comentário contiver a palavra EXATA (ex: "LISTA") e não substrings como "especialista"
+            if (!matchesKeywordStrict(commentText, state.keyword)) {
+              continue; // Comentário comum sem a palavra-chave. NÃO FAZ NADA!
+            }
+
+            // Envia a Caixinha Interativa (Generic Template) com o botão nativo da Meta
+            const caixinhaPayload = {
+              recipient: { comment_id: commentData.id },
+              message: {
+                attachment: {
+                  type: "template",
+                  payload: {
+                    template_type: "generic",
+                    elements: [
+                      {
+                        title: state.firstDmTitle || "Me segue ai pra min te enviar ingrato(a) 🚀",
+                        subtitle: state.firstDmSubtitle || "Tô postando vídeo assim toda semana! Clica no botão abaixo pra liberar seu link 👇",
+                        buttons: [
+                          {
+                            type: "postback",
+                            title: state.buttonText || "✅ Já estou te seguindo!",
+                            payload: "FOLLOW_CONFIRMED"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              }
+            };
+
+            try {
+              const dmRes = await fetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${PAGE_TOKEN}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(caixinhaPayload)
+              });
+              const dmJson = await dmRes.json();
+              
+              // Fallback se template genérico não for suportado no direct do usuário
+              if (!dmJson.message_id) {
+                await fetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${PAGE_TOKEN}`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    recipient: { comment_id: commentData.id },
+                    message: {
+                      text: `${state.firstDmTitle}\n\n${state.firstDmSubtitle}`,
+                      quick_replies: [
+                        {
+                          content_type: "text",
+                          title: state.buttonText || "✅ Já estou te seguindo!",
+                          payload: "FOLLOW_CONFIRMED"
+                        }
+                      ]
+                    }
+                  })
+                });
+              }
+            } catch (e) {
+              console.error('Erro ao enviar DM privada para o comentário:', e);
+            }
+
+            // Resposta pública humanizada no comentário
+            try {
+              const replyText = PUBLIC_REPLIES[Math.floor(Math.random() * PUBLIC_REPLIES.length)];
+              await fetch(`https://graph.facebook.com/v21.0/${commentData.id}/replies?access_token=${PAGE_TOKEN}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: replyText })
+              });
+            } catch (e) {
+              console.error('Erro ao enviar resposta pública no comentário:', e);
             }
           }
         }
+      }
 
-        // 2. Mensagens e Cliques em Botões (Postbacks)
-        if (entry.messaging) {
-          for (const msg of entry.messaging) {
-            if (msg.postback) {
-              console.log('[Meta Webhook] Postback (Botão Clicado):', msg.postback.title, msg.postback.payload);
-            } else if (msg.message) {
-              console.log('[Meta Webhook] Mensagem Direta recebida:', msg.message.text);
+      // =========================================================================
+      // 3. PROCESSAMENTO DE MENSAGENS NO DIRECT (DM)
+      // REGRA MÁXIMA DE CONVERSA HUMANA: O BOT NUNCA INTERROMPE CONVERSAS NORMAIS!
+      // =========================================================================
+      if (entry.messaging) {
+        for (const msg of entry.messaging) {
+          const senderId = msg.sender?.id;
+          if (!senderId) continue;
+
+          // Ignora mensagens enviadas pela própria página/conta (eco)
+          if (senderId === MY_PAGE_ID || senderId === MY_IG_ID || msg.message?.is_echo) {
+            continue;
+          }
+
+          const rawText = (msg.message?.text || '').trim();
+          const postbackPayload = msg.postback?.payload || msg.message?.quick_reply?.payload;
+
+          // Detecta se o usuário clicou no botão "Já estou te seguindo!"
+          const isButtonClicked = postbackPayload === 'FOLLOW_CONFIRMED';
+
+          // Detecta se o usuário enviou estritamente a palavra-chave no direct
+          const isExactKeyword = matchesKeywordStrict(rawText, state.keyword);
+
+          // REGRA DE SEGURANÇA 3: FILTRO ANTI-INTRUSÃO
+          // Se NÃO foi clique no botão E NÃO foi a palavra-chave configurada:
+          // O BOT NÃO FAZ ABSOLUTAMENTE NADA!
+          // Conversas como "Eai", "Oi", "Crl", "Tudo bem?", áudios, etc., são deixadas 100% livres para o humano responder!
+          if (!isButtonClicked && !isExactKeyword) {
+            continue; // PULA! Zero resposta automática para conversas normais!
+          }
+
+          // Caso 1: Usuário enviou a palavra-chave no Direct (ex: "LISTA")
+          if (isExactKeyword && !isButtonClicked) {
+            try {
+              await fetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${PAGE_TOKEN}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  recipient: { id: senderId },
+                  message: {
+                    text: `${state.firstDmTitle}\n\n${state.firstDmSubtitle}`,
+                    quick_replies: [
+                      {
+                        content_type: "text",
+                        title: state.buttonText || "✅ Já estou te seguindo!",
+                        payload: "FOLLOW_CONFIRMED"
+                      }
+                    ]
+                  }
+                })
+              });
+            } catch (e) {
+              console.error('Erro ao responder palavra-chave no direct:', e);
+            }
+            continue;
+          }
+
+          // Caso 2: Usuário clicou no botão "Já estou te seguindo!" (FOLLOW_CONFIRMED)
+          if (isButtonClicked) {
+            // Checagem oficial na Meta se o perfil REALMENTE segue a conta comercial
+            let isFollower = false;
+            try {
+              const checkRes = await fetch(`https://graph.facebook.com/v21.0/${senderId}?fields=is_user_follow_business&access_token=${PAGE_TOKEN}`);
+              const checkData = await checkRes.json();
+              if (checkData.is_user_follow_business === true) {
+                isFollower = true;
+              }
+            } catch (e) {
+              console.error('Erro ao verificar status de seguidor na Meta:', e);
+            }
+
+            if (isFollower) {
+              // SEGUIDOR CONFIRMADO: Envia o link final com segurança!
+              try {
+                await fetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${PAGE_TOKEN}`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    recipient: { id: senderId },
+                    message: { text: state.finalLinkMessage }
+                  })
+                });
+              } catch (e) {
+                console.error('Erro ao enviar link final no direct:', e);
+              }
+            } else {
+              // NÃO SEGUE: NÃO envia o link! Envia o lembrete educado com o botão para tentar de novo
+              try {
+                await fetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${PAGE_TOKEN}`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    recipient: { id: senderId },
+                    message: {
+                      text: state.travaReminder,
+                      quick_replies: [
+                        {
+                          content_type: "text",
+                          title: state.buttonText || "✅ Já estou te seguindo!",
+                          payload: "FOLLOW_CONFIRMED"
+                        }
+                      ]
+                    }
+                  })
+                });
+              } catch (e) {
+                console.error('Erro ao enviar lembrete de trava no direct:', e);
+              }
             }
           }
         }
       }
     }
-    
-    // Sempre responder 200 OK imediatamente para a Meta não reenviar nem suspender o webhook
+
     return new Response('EVENT_RECEIVED', {
       status: 200,
       headers: { 'Content-Type': 'text/plain' }
     });
   } catch (err) {
+    console.error('Erro geral no webhook:', err);
     return new Response('Bad Request', { status: 400 });
   }
 }

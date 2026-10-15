@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Users, Search, Tag, Clock, ShieldCheck, MessageCircle, Filter, HelpCircle } from 'lucide-react';
 import { InstagramIcon } from '../Icons';
 import { useApp } from '../../context/AppContext';
+import { UserAvatar } from '../Common/UserAvatar';
 
 export const ContactsView = () => {
   const { contacts } = useApp();
@@ -17,20 +18,20 @@ export const ContactsView = () => {
   });
 
   return (
-    <div className="p-8 space-y-8 max-w-7xl mx-auto animate-in fade-in duration-300">
+    <div className="p-3 sm:p-6 md:p-8 space-y-4 sm:space-y-6 md:space-y-8 max-w-7xl mx-auto animate-in fade-in duration-300">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold font-heading text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
-              <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-xl sm:text-2xl font-bold font-heading text-slate-900 dark:text-white tracking-tight flex items-center gap-2 sm:gap-2.5">
+              <Users className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 dark:text-blue-400" />
               Contatos & CRM Unificado
             </h1>
-            <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400 font-semibold border border-blue-200 dark:border-blue-800">
-              ManyChat Audience
+            <span className="text-[11px] sm:text-xs px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400 font-semibold border border-blue-200 dark:border-blue-800">
+              Público & Leads
             </span>
           </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
             Lista de seguidores capturados no Instagram e WhatsApp com monitoramento da Janela de 24 horas da Meta.
           </p>
         </div>
@@ -43,11 +44,11 @@ export const ContactsView = () => {
       </div>
 
       {/* Explicação da Janela de 24 Horas */}
-      <div className="p-4 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/80 flex items-start gap-3">
+      <div className="p-3.5 sm:p-4 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/80 flex items-start gap-3">
         <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
         <div className="text-xs text-emerald-950 dark:text-emerald-200 space-y-1">
           <p className="font-bold">O que é a Janela de 24 Horas da Meta?</p>
-          <p className="text-emerald-800 dark:text-emerald-300 leading-relaxed">
+          <p className="text-emerald-800 dark:text-emerald-300 leading-relaxed text-[11px] sm:text-xs">
             Sempre que um usuário comenta ou envia uma mensagem para você, a Meta permite que você envie mensagens automáticas e links promocionais durante exatamente <strong>24 horas</strong>. Quando o tempo zera, o sistema protege sua conta pausando disparos promocionais para evitar suspensões.
           </p>
         </div>
@@ -56,7 +57,7 @@ export const ContactsView = () => {
       {/* Filtros e Busca */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 sm:top-3" />
           <input
             type="text"
             value={searchTerm}
@@ -66,7 +67,7 @@ export const ContactsView = () => {
           />
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
           <button
             onClick={() => setChannelFilter('all')}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
@@ -118,10 +119,12 @@ export const ContactsView = () => {
                 <tr key={contact.id} className="hover:bg-slate-50 dark:hover:bg-slate-750/50 transition-colors">
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-3">
-                      <img 
-                        src={contact.avatar} 
-                        alt={contact.name} 
-                        className="w-8 h-8 rounded-full object-cover border border-slate-200 dark:border-slate-700"
+                      <UserAvatar
+                        name={contact.name}
+                        handle={contact.handle}
+                        avatar={contact.avatar}
+                        channel={contact.channel}
+                        size="sm"
                       />
                       <div>
                         <p className="font-bold text-slate-900 dark:text-white">{contact.name}</p>

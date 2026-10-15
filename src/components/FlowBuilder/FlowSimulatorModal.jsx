@@ -1,25 +1,42 @@
 import React, { useState } from 'react';
-import { X, Send, RotateCcw, Smartphone, ShieldCheck, CheckCircle2, Sparkles, HelpCircle, UserCheck, Lock, Unlock } from 'lucide-react';
+import { X, Send, RotateCcw, Smartphone, ShieldCheck, CheckCircle2, Sparkles, HelpCircle, UserCheck, Lock, Unlock, ExternalLink } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 export const FlowSimulatorModal = ({ onClose }) => {
-  const { flows, selectedFlowId } = useApp();
+  const { flows, selectedFlowId, triggers } = useApp();
   const currentFlow = flows.find(f => f.id === selectedFlowId) || flows[0];
 
-  const [inputVal, setInputVal] = useState('LISTA');
+  // Recupera nós reais configurados pelo usuário no FlowBuilder
+  const gateNode = currentFlow?.nodes?.find(n => n.type === 'follower_gate');
+  const deliveryNode = currentFlow?.nodes?.find(n => n.type === 'message' || n.id === 'node_send_link');
+  const triggerNode = currentFlow?.nodes?.find(n => n.type === 'trigger');
+  const activeTrigger = triggers?.find(t => t.flowId === currentFlow?.id) || triggers?.[0];
+
+  // Textos dinâmicos exatos definidos pelo usuário
+  const keyword = triggerNode?.data?.keyword || activeTrigger?.keyword || 'LISTA';
+  const gateMessage = gateNode?.data?.text?.replace(/\{\{first_name\}\}/g, 'Visitante') || 'Me segue aí pra mim te enviar ingrato(a) Tô postando video assim toda semana 🚀';
+  const gateButtonLabel = gateNode?.data?.buttons?.[0]?.title || 'Já estou te seguindo!';
+  const gateFallbackText = gateNode?.data?.fallbackText || 'Opa! Vi aqui que você ainda não começou a me seguir 👀 Dá um pulinho no meu perfil @ygorweb, começa a me seguir e depois clica no botão de novo que eu já te libero na hora!';
+
+  const deliveryMessage = deliveryNode?.data?.text?.replace(/\{\{first_name\}\}/g, 'Visitante') || 'Ta na mão! Link seguro liberado 🚀';
+  const deliveryButtons = deliveryNode?.data?.buttons || [];
+  const primaryDeliveryUrl = deliveryButtons[0]?.url || (deliveryMessage.match(/https?:\/\/[^\s]+/)?.[0] || '');
+
+  const [inputVal, setInputVal] = useState(keyword);
   const [simMode, setSimMode] = useState('follower_gate'); // 'follower_gate' | 'standard'
+  const [mobileTab, setMobileTab] = useState('phone'); // 'phone' | 'logs'
   const [isFollowingUser, setIsFollowingUser] = useState(false);
   const [messages, setMessages] = useState([
     {
       id: 1,
       sender: 'system',
-      text: 'Simulação ao vivo. Comente no Reel abaixo como se fosse um seguidor no Instagram:'
+      text: `Simulação ao vivo. Comente a palavra-chave "${keyword}" no Reel como se fosse um seguidor:`
     }
   ]);
   const [isTyping, setIsTyping] = useState(false);
   const [logTrace, setLogTrace] = useState([
     'Iniciando motor WebFlow com Trava de Seguidor...',
-    'Aguardando comentário no Reel...'
+    `Aguardando comentário com palavra-chave "${keyword}" no Reel...`
   ]);
 
   const handleSendMessage = () => {
@@ -27,7 +44,7 @@ export const FlowSimulatorModal = ({ onClose }) => {
     const userText = inputVal.trim();
     setInputVal('');
 
-    // Adiciona comentário do usuário
+    // Adiciona comentário do seguidor
     setMessages(prev => [
       ...prev,
       { id: Date.now(), sender: 'user', text: `Comentou no Reel: "${userText}"` }
@@ -36,8 +53,8 @@ export const FlowSimulatorModal = ({ onClose }) => {
     setLogTrace(prev => [
       ...prev,
       `[1. Comentário Detectado] Seguidor comentou "${userText}".`,
-      `[2. Escudo Anti-Ban] Sorteando 1 de 8 variações de Spintax para resposta pública no Reel...`,
-      `[3. Atraso Jitter] Aguardando 12s programados (simulando digitação humana)...`
+      `[2. Escudo Anti-Ban] Sorteando resposta humanizada de Spintax para o comentário público...`,
+      `[3. Atraso Jitter] Aguardando intervalo de segurança para simular digitação humana...`
     ]);
 
     setIsTyping(true);
@@ -51,15 +68,15 @@ export const FlowSimulatorModal = ({ onClose }) => {
           {
             id: Date.now() + 1,
             sender: 'bot',
-            text: 'Oi! Preparei esse material com muito carinho exclusivamente para quem me acompanha aqui no Instagram 🎁 Dá um pulinho no meu perfil @ygorweb, começa a me seguir e depois toca no botão abaixo pra eu te enviar na hora 👇',
-            buttonText: '✅ Já estou te seguindo!',
+            text: gateMessage,
+            buttonText: gateButtonLabel,
             isGate: true
           }
         ]);
         setLogTrace(prev => [
           ...prev,
-          `[4. Trava de Seguidor Disparada] Mensagem de convite amigável enviada.`,
-          `[5. Aguardando Confirmação] O link fica travado até o usuário começar a seguir.`
+          `[4. 1ª DM: Trava de Seguidor Disparada] Enviando mensagem configurada no fluxo.`,
+          `[5. Aguardando Confirmação] O link fica 100% retido até o usuário começar a seguir @ygorweb.`
         ]);
       } else {
         setMessages(prev => [
@@ -78,11 +95,11 @@ export const FlowSimulatorModal = ({ onClose }) => {
           `[5. Status Meta] Aguardando clique do usuário para abrir legalmente a Janela de 24 Horas.`
         ]);
       }
-    }, 1200);
+    }, 1100);
   };
 
   const handleButtonClick = (isGate) => {
-    const btnLabel = isGate ? '✅ Já estou te seguindo!' : '👉 Liberar Meu Acesso Agora';
+    const btnLabel = isGate ? gateButtonLabel : '👉 Liberar Meu Acesso Agora';
     setMessages(prev => [
       ...prev,
       { id: Date.now(), sender: 'user', text: `[Clicou no botão: ${btnLabel}]` }
@@ -100,16 +117,16 @@ export const FlowSimulatorModal = ({ onClose }) => {
             {
               id: Date.now() + 1,
               sender: 'bot',
-              text: 'Opa! Vi aqui que você ainda não começou a me seguir 👀 Dá um pulinho lá no perfil @ygorweb rapidinho, clica em Seguir e aperta no botão de novo que eu já te libero na hora!',
-              buttonText: '✅ Já estou te seguindo!',
+              text: gateFallbackText,
+              buttonText: gateButtonLabel,
               isGate: true
             }
           ]);
           setLogTrace(prev => [
             ...prev,
-            `[Checagem de Seguidor] Usuário clicou mas AINDA NÃO segue @ygorweb.`,
-            `[Trava Mantida] O link NÃO foi liberado. Lembrete amigável enviado.`,
-            `[Crescimento Orgânico] Lead direcionado a seguir seu perfil.`
+            `[Checagem de Seguidor] Usuário clicou no botão mas AINDA NÃO segue @ygorweb.`,
+            `[Trava Mantida] O link NÃO foi liberado. Mensagem de lembrete enviada.`,
+            `[Crescimento Orgânico] Lead convidado amigavelmente a seguir para desbloquear.`
           ]);
         } else {
           // Liberado humanizado: seguiu de verdade!
@@ -118,14 +135,15 @@ export const FlowSimulatorModal = ({ onClose }) => {
             {
               id: Date.now() + 1,
               sender: 'bot',
-              text: 'Show de bola! Muito obrigado por acompanhar meu trabalho! 🎉 Aqui está o seu acesso direto com todos os detalhes: 📲 https://wa.me/5511999998888?text=QueroMeuAcesso',
-              url: 'https://wa.me/5511999998888?text=QueroMeuAcesso'
+              text: deliveryMessage,
+              url: primaryDeliveryUrl,
+              buttons: deliveryButtons
             }
           ]);
           setLogTrace(prev => [
             ...prev,
             `[Checagem de Seguidor] Confirmado! Usuário agora é seguidor oficial de @ygorweb.`,
-            `[Trava Desbloqueada] Material liberado com sucesso!`,
+            `[Trava Desbloqueada] 2ª DM de Entrega disparada com sucesso!`,
             `[Tag Aplicada] Adicionada tag "seguidor_confirmado".`,
             `[Entrega Segura] Link enviado diretamente na caixa de entrada principal.`
           ]);
@@ -148,8 +166,9 @@ export const FlowSimulatorModal = ({ onClose }) => {
         {
           id: Date.now() + 1,
           sender: 'bot',
-          text: 'Perfeito! Como você confirmou, aqui está o seu acesso direto ao material e grupo VIP no WhatsApp: 📲 https://wa.me/5511999998888',
-          url: 'https://wa.me/5511999998888'
+          text: deliveryMessage,
+          url: primaryDeliveryUrl,
+          buttons: deliveryButtons
         }
       ]);
       setLogTrace(prev => [
@@ -161,26 +180,59 @@ export const FlowSimulatorModal = ({ onClose }) => {
 
   const handleReset = () => {
     setMessages([
-      { id: 1, sender: 'system', text: 'Simulação reiniciada. Comente a palavra-chave configurada:' }
+      { id: 1, sender: 'system', text: `Simulação reiniciada. Comente a palavra-chave "${keyword}":` }
     ]);
     setLogTrace([
       'Reiniciando simulador...',
-      'Aguardando novo comentário...'
+      `Aguardando novo comentário com "${keyword}"...`
     ]);
-    setInputVal('LISTA');
+    setInputVal(keyword);
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-      <div className="w-full max-w-4xl h-[670px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl flex overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 animate-in fade-in">
+      <div className="w-full max-w-4xl h-[92vh] sm:h-[670px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl flex flex-col md:flex-row overflow-hidden relative">
+        {/* Mobile Tab Bar */}
+        <div className="md:hidden flex items-center justify-between p-2 border-b border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-850 shrink-0">
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setMobileTab('phone')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                mobileTab === 'phone'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800'
+              }`}
+            >
+              📱 Celular Direct
+            </button>
+            <button
+              onClick={() => setMobileTab('logs')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                mobileTab === 'logs'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800'
+              }`}
+            >
+              ⚙️ Logs do Motor REA
+            </button>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-white dark:hover:bg-slate-800 transition-colors"
+            aria-label="Fechar"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
         {/* Lado Esquerdo: Simulador de Celular Realista */}
-        <div className="w-[370px] bg-slate-50 dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between shrink-0">
+        <div className={`w-full md:w-[370px] bg-slate-50 dark:bg-slate-950 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between shrink-0 h-full overflow-hidden ${mobileTab === 'phone' ? 'flex' : 'hidden md:flex'}`}>
           {/* Topo do Celular (Instagram Direct Header) */}
-          <div className="p-3.5 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between">
+          <div className="p-3.5 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2.5">
               <img 
-                src="/logo.jpg" 
-                alt="WebFlow" 
+                src="/avatar_ygorweb.jpg" 
+                alt="Ygor Souza (@ygorweb)" 
                 className="w-8 h-8 rounded-full object-cover border border-slate-200 dark:border-slate-700" 
               />
               <div>
@@ -275,16 +327,33 @@ export const FlowSimulatorModal = ({ onClose }) => {
                       </button>
                     )}
 
-                    {m.url && (
+                    {/* Botões Dinâmicos da 2ª DM (Entrega de Links Reais) */}
+                    {m.buttons && m.buttons.length > 0 ? (
+                      <div className="mt-2.5 space-y-1.5">
+                        {m.buttons.map((b, idx) => (
+                          <a
+                            key={idx}
+                            href={b.url || '#'}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="w-full py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11px] shadow-xs text-center flex items-center justify-center gap-1.5 transition-colors"
+                          >
+                            <span>{b.title}</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        ))}
+                      </div>
+                    ) : m.url ? (
                       <a
                         href={m.url}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-block mt-2 text-[11px] text-blue-600 dark:text-blue-400 hover:underline font-bold"
+                        className="inline-flex items-center gap-1 mt-2 text-[11px] text-blue-600 dark:text-blue-400 hover:underline font-bold"
                       >
-                        Abrir no WhatsApp ↗
+                        <span>Abrir Link Seguro</span>
+                        <ExternalLink className="w-3 h-3" />
                       </a>
-                    )}
+                    ) : null}
                   </div>
                 )}
               </div>
@@ -306,7 +375,7 @@ export const FlowSimulatorModal = ({ onClose }) => {
               value={inputVal}
               onChange={(e) => setInputVal(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-              placeholder="Digite LISTA..."
+              placeholder={`Digite ${keyword}...`}
               className="flex-1 px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-bold uppercase focus:outline-none focus:border-blue-500"
             />
             <button
@@ -319,7 +388,7 @@ export const FlowSimulatorModal = ({ onClose }) => {
         </div>
 
         {/* Lado Direito: Console de Auditoria e Explicação Passo a Passo */}
-        <div className="flex-1 p-6 flex flex-col justify-between bg-white dark:bg-slate-900">
+        <div className={`flex-1 p-4 sm:p-6 flex-col justify-between bg-white dark:bg-slate-900 overflow-y-auto h-full ${mobileTab === 'logs' ? 'flex' : 'hidden md:flex'}`}>
           <div>
             <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
               <div className="flex items-center gap-2">

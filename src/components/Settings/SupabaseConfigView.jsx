@@ -110,26 +110,26 @@ export const SupabaseConfigView = () => {
   };
 
   return (
-    <div className="p-8 space-y-8 max-w-7xl mx-auto animate-in fade-in duration-300">
+    <div className="p-3 sm:p-6 md:p-8 space-y-4 sm:space-y-6 md:space-y-8 max-w-7xl mx-auto animate-in fade-in duration-300">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold font-heading text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
-              <Database className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
-              Banco de Dados Supabase (PostgreSQL Gratuito)
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-xl sm:text-2xl font-bold font-heading text-slate-900 dark:text-white tracking-tight flex items-center gap-2 sm:gap-2.5">
+              <Database className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600 dark:text-emerald-400" />
+              Banco de Dados Supabase (PostgreSQL)
             </h1>
-            <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400 font-bold border border-emerald-200 dark:border-emerald-800">
-              Conectado ao Projeto
+            <span className="text-[11px] sm:text-xs px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400 font-bold border border-emerald-200 dark:border-emerald-800">
+              Conectado
             </span>
           </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
             Seus contatos, fluxos e mensagens são salvos diretamente no seu próprio banco de dados, sem intermediários.
           </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
         {/* Formulário de Conexão */}
         <div className="p-6 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xs space-y-5">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700">

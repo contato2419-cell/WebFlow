@@ -10,8 +10,12 @@ import { ContactsView } from './components/Audience/ContactsView';
 import { LiveChatView } from './components/LiveChat/LiveChatView';
 import { ChannelsView } from './components/Settings/ChannelsView';
 import { SupabaseConfigView } from './components/Settings/SupabaseConfigView';
+import { BroadcastsView } from './components/Broadcasts/BroadcastsView';
+import { SequencesView } from './components/Sequences/SequencesView';
+import { AiKnowledgeView } from './components/AI/AiKnowledgeView';
 import { FlowSimulatorModal } from './components/FlowBuilder/FlowSimulatorModal';
 import { AuthModal } from './components/Auth/AuthModal';
+import { MobileBottomNav } from './components/MobileBottomNav';
 
 export const App = () => {
   const { currentView, setCurrentView, createFlow } = useApp();
@@ -33,21 +37,33 @@ export const App = () => {
       />
 
       {/* Corpo da Aplicação */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Sidebar Esquerda */}
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* Sidebar Esquerda (Desktop + Mobile Drawer) */}
         <Sidebar />
 
         {/* View Principal Ativa */}
-        <main className="flex-1 overflow-y-auto bg-[#F8FAFC] dark:bg-[#0B0F19] transition-colors duration-200">
+        <main className={`flex-1 min-w-0 ${
+          currentView === 'live-chat' 
+            ? 'overflow-hidden flex flex-col pb-14 md:pb-0' 
+            : currentView === 'flows' 
+              ? 'overflow-hidden flex flex-col pb-14 md:pb-0' 
+              : 'overflow-y-auto pb-16 md:pb-0'
+        } bg-[#F8FAFC] dark:bg-[#0B0F19] transition-colors duration-200`}>
           {currentView === 'dashboard' && <DashboardView onNewFlow={handleCreateNewFlow} />}
           {currentView === 'flows' && <FlowCanvas onOpenSimulator={() => setSimulatorOpen(true)} />}
           {currentView === 'growth-tools' && <CommentsTriggerView />}
+          {currentView === 'broadcasts' && <BroadcastsView />}
+          {currentView === 'sequences' && <SequencesView />}
+          {currentView === 'ai' && <AiKnowledgeView />}
           {currentView === 'audience' && <ContactsView />}
           {currentView === 'live-chat' && <LiveChatView />}
           {currentView === 'channels' && <ChannelsView />}
           {currentView === 'settings' && <SupabaseConfigView />}
         </main>
       </div>
+
+      {/* Barra de Navegação Inferior no Mobile */}
+      <MobileBottomNav />
 
       {/* Modais Globais */}
       {simulatorOpen && (

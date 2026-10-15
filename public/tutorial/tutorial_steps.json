@@ -1,0 +1,121 @@
+[
+  {
+    "id": "step_01_meta_app_id",
+    "image": "/tutorial/step_01_meta_app_id.png",
+    "title": "Passo 1: Localizar o ID do Aplicativo",
+    "badge": "Meta Developers",
+    "description": "No portal developers.facebook.com, selecione seu app e copie o número do ID do app."
+  },
+  {
+    "id": "step_02_business_suite_menu",
+    "image": "/tutorial/step_02_business_suite_menu.png",
+    "title": "Passo 2: Abrir Todas as Ferramentas",
+    "badge": "Business Suite",
+    "description": "No Meta Business Suite (business.facebook.com), clique no menu \"Todas as ferramentas\"."
+  },
+  {
+    "id": "step_03_adicionar_app",
+    "image": "/tutorial/step_03_adicionar_app.png",
+    "title": "Passo 3: Acessar Contas → Apps",
+    "badge": "Business Suite",
+    "description": "Em Configurações do Negócio, vá no menu esquerdo \"Contas → Apps\" e clique no botão azul \"+ Adicionar\"."
+  },
+  {
+    "id": "step_04_conectar_id_app",
+    "image": "/tutorial/step_04_conectar_id_app.png",
+    "title": "Passo 4: Escolher \"Conectar um ID do app\"",
+    "badge": "Business Suite",
+    "description": "No modal que abrir, clique na segunda opção (ícone da etiqueta) para vincular o app da Meta."
+  },
+  {
+    "id": "step_05_usuarios_sistema",
+    "image": "/tutorial/step_05_usuarios_sistema.png",
+    "title": "Passo 5: Acessar Usuários do Sistema",
+    "badge": "Business Suite",
+    "description": "No menu lateral esquerdo, sob a seção \"Usuários\", clique em \"Usuários do sistema\"."
+  },
+  {
+    "id": "step_06_criar_webflow_bot",
+    "image": "/tutorial/step_06_criar_webflow_bot.png",
+    "title": "Passo 6: Criar Usuário \"WebFlow Bot\" como Admin",
+    "badge": "System User",
+    "description": "Dê o nome \"WebFlow Bot\" e selecione a função \"Admin\" para permitir controle de mensagens."
+  },
+  {
+    "id": "step_07_clicar_atribuir_ativos",
+    "image": "/tutorial/step_07_clicar_atribuir_ativos.png",
+    "title": "Passo 7: Clicar em \"Atribuir Ativos\"",
+    "badge": "System User",
+    "description": "Com o WebFlow Bot criado como Administrador, clique no botão \"Atribuir ativos\"."
+  },
+  {
+    "id": "step_08_selecionar_ativos",
+    "image": "/tutorial/step_08_selecionar_ativos.png",
+    "title": "Passo 8: Selecionar os 3 Tipos de Ativos",
+    "badge": "Atribuição",
+    "description": "Vá em Páginas, Apps e Instagram. Marque a caixinha da sua Página, App e Perfil."
+  },
+  {
+    "id": "step_09_acesso_total",
+    "image": "/tutorial/step_09_acesso_total.png",
+    "title": "Passo 9: Conceder \"Acesso Total: Tudo\"",
+    "badge": "Permissões",
+    "description": "Role até o final da coluna direita e ative a chave \"Acesso total (Tudo)\", depois clique em Salvar."
+  },
+  {
+    "id": "step_10_clicar_gerar_token",
+    "image": "/tutorial/step_10_clicar_gerar_token.png",
+    "title": "Passo 10: Ativos Conectados → Clicar em \"Gerar Token\"",
+    "badge": "Gerar Token",
+    "description": "Com os 3 ativos atribuídos com Acesso Total, clique no botão \"Gerar token\"."
+  },
+  {
+    "id": "step_11_selecionar_app_token",
+    "image": "/tutorial/step_11_selecionar_app_token.png",
+    "title": "Passo 11: Selecionar o Aplicativo WebFlow",
+    "badge": "Gerar Token",
+    "description": "No primeiro campo do assistente, selecione seu app \"WebFlow Automação\" e clique em Avançar."
+  },
+  {
+    "id": "step_12_expiracao_nunca",
+    "image": "/tutorial/step_12_expiracao_nunca.png",
+    "title": "Passo 12: Definir Expiração do Token: NUNCA",
+    "badge": "Permanente",
+    "description": "REGRA DE OURO: Marque \"Nunca\" para que o token seja permanente e seu robô nunca pare."
+  },
+  {
+    "id": "step_13_marcar_permissoes",
+    "image": "/tutorial/step_13_marcar_permissoes.png",
+    "title": "Passo 13: Marcar Todas as Permissões Oficiais",
+    "badge": "Permissões API",
+    "description": "Marque instagram_manage_messages, instagram_manage_comments, instagram_basic e pages_manage_metadata."
+  },
+  {
+    "id": "step_14_token_gerado_copiar",
+    "image": "/tutorial/step_14_token_gerado_copiar.png",
+    "title": "Passo 14: Token Permanente Gerado com Sucesso",
+    "badge": "Token Copiado",
+    "description": "Clique no botão \"Copiar\" para guardar seu token. O valor é 100% privado e permanente."
+  },
+  {
+    "id": "step_15_configurar_webhook",
+    "image": "/tutorial/step_15_configurar_webhook.png",
+    "title": "Passo 15: Configurar Webhooks do Instagram",
+    "badge": "Webhooks Live",
+    "description": "Cole a URL de callback e o Token de Verificação e clique em \"Verificar e salvar\". Depois assine os campos."
+  },
+  {
+    "id": "step_16_localizar_page_id",
+    "image": "/tutorial/step_16_localizar_page_id.png",
+    "title": "Passo 16: Copiar o Facebook Page ID Conectado",
+    "badge": "Facebook Page ID",
+    "description": "Em Business Suite → Contas → Páginas, copie o número de Identificação da página vinculada ao Instagram."
+  },
+  {
+    "id": "step_17_salvar_webflow",
+    "image": "/tutorial/step_17_salvar_webflow.png",
+    "title": "Passo 17: Salvar e Ativar Tudo no WebFlow",
+    "badge": "WebFlow Conectado",
+    "description": "No WebFlow, insira os dados e clique no botão azul \"Salvar Configurações com Segurança\". Pronto!"
+  }
+]

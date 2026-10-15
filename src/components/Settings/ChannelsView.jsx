@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { InstagramIcon } from '../Icons';
 import { useApp } from '../../context/AppContext';
+import { MetaSetupVisualGuide } from '../Tutorial/MetaSetupVisualGuide';
 
 export const ChannelsView = () => {
   const { channels, setChannels } = useApp();
@@ -83,18 +84,18 @@ export const ChannelsView = () => {
   };
 
   return (
-    <div className="p-6 md:p-8 space-y-8 max-w-7xl mx-auto animate-in fade-in duration-300">
+    <div className="p-3 sm:p-6 md:p-8 space-y-4 sm:space-y-6 md:space-y-8 max-w-7xl mx-auto animate-in fade-in duration-300">
       {/* Header com Status & Acesso Rápido ao Meta Developers */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-200 dark:border-slate-800">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 sm:pb-6 border-b border-slate-200 dark:border-slate-800">
         <div>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center border border-blue-200 dark:border-blue-800">
-              <Radio className="w-5 h-5" />
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center border border-blue-200 dark:border-blue-800 shrink-0">
+              <Radio className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-bold font-heading text-slate-900 dark:text-white tracking-tight">
-                  Canais Meta: Instagram Direct & WhatsApp Cloud API
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-xl sm:text-2xl font-bold font-heading text-slate-900 dark:text-white tracking-tight">
+                  Canais Meta: Instagram & WhatsApp
                 </h1>
                 <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400 border border-blue-200 dark:border-blue-800 uppercase tracking-wider">
                   Graph API v21.0
@@ -107,21 +108,21 @@ export const ChannelsView = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap w-full md:w-auto">
           <a
             href="https://developers.facebook.com/apps/"
             target="_blank"
             rel="noreferrer"
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 shadow-xs transition-colors"
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 shadow-xs transition-colors"
           >
-            <span>Painel Meta for Developers</span>
+            <span>Meta for Developers</span>
             <ExternalLink className="w-3.5 h-3.5" />
           </a>
           <a
             href="https://business.facebook.com/settings"
             target="_blank"
             rel="noreferrer"
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-xs font-semibold text-white shadow-xs transition-colors"
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-xs font-semibold text-white shadow-xs transition-colors"
           >
             <span>Meta Business Suite</span>
             <ExternalLink className="w-3.5 h-3.5" />
@@ -386,185 +387,8 @@ export const ChannelsView = () => {
         </button>
       </div>
 
-      {/* 📘 TUTORIAL INTERATIVO PASSO A PASSO (COMO CONFIGURAR NO META FOR DEVELOPERS) */}
-      <div className="p-6 md:p-8 rounded-2xl bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-700/80 shadow-xs space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-700/80">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
-              <BookOpen className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-base font-bold text-slate-900 dark:text-white font-heading">
-                Tutorial Completo: Como Configurar o Aplicativo no Meta for Developers
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Siga este roteiro detalhado para criar e aprovar suas credenciais oficiais sem erros e sem custos.
-              </p>
-            </div>
-          </div>
-          <span className="text-xs font-semibold px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-            Passo a Passo Didático
-          </span>
-        </div>
-
-        {/* Abas do Tutorial */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-slate-100 dark:border-slate-800">
-          <button
-            onClick={() => setActiveTutorialTab('passo1')}
-            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-colors whitespace-nowrap flex items-center gap-2 ${
-              activeTutorialTab === 'passo1'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
-            }`}
-          >
-            <span>Passo 1: Criar App na Meta</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTutorialTab('passo2')}
-            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-colors whitespace-nowrap flex items-center gap-2 ${
-              activeTutorialTab === 'passo2'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
-            }`}
-          >
-            <span>Passo 2: Vincular Instagram & Página</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTutorialTab('passo3')}
-            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-colors whitespace-nowrap flex items-center gap-2 ${
-              activeTutorialTab === 'passo3'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
-            }`}
-          >
-            <span>Passo 3: Token Permanente (System User)</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTutorialTab('passo4')}
-            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-colors whitespace-nowrap flex items-center gap-2 ${
-              activeTutorialTab === 'passo4'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
-            }`}
-          >
-            <span>Passo 4: Configurar Webhooks</span>
-          </button>
-        </div>
-
-        {/* Conteúdo da Aba Ativa */}
-        <div className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed space-y-4">
-          {activeTutorialTab === 'passo1' && (
-            <div className="space-y-4 animate-in fade-in">
-              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 space-y-2">
-                <h4 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
-                  <span className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs">1</span>
-                  Criando a Conta e o Aplicativo no Meta for Developers
-                </h4>
-                <ol className="list-decimal list-inside space-y-2 text-slate-600 dark:text-slate-300 ml-1">
-                  <li>Acesse o portal oficial de desenvolvedores do Facebook: <a href="https://developers.facebook.com" target="_blank" rel="noreferrer" className="text-blue-600 dark:text-blue-400 font-semibold underline">developers.facebook.com</a>.</li>
-                  <li>Faça login com a sua conta pessoal do Facebook (o perfil que é administrador da sua Página e Gerenciador de Negócios).</li>
-                  <li>No canto superior direito, clique no botão <strong>"Meus Apps"</strong> (My Apps) e depois em <strong>"Criar App"</strong> (Create App).</li>
-                  <li>Quando o Meta perguntar <em>"O que você deseja que seu app faça?"</em>, selecione a opção <strong>"Outro"</strong> (Other) e clique em Avançar.</li>
-                  <li>Na tela seguinte de tipo de aplicativo, escolha <strong>"Empresa"</strong> (Business) para ter acesso completo a automações comerciais e DMs.</li>
-                  <li>Dê um nome para o seu aplicativo (ex: <code>WebFlow Automação</code>) e selecione a sua Conta Empresarial do Meta Business Suite.</li>
-                  <li>Clique em <strong>"Criar App"</strong> e confirme a senha do seu Facebook se solicitado.</li>
-                </ol>
-              </div>
-            </div>
-          )}
-
-          {activeTutorialTab === 'passo2' && (
-            <div className="space-y-4 animate-in fade-in">
-              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 space-y-3">
-                <h4 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
-                  <span className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs">2</span>
-                  Conectando Produtos & Requisitos da Conta do Instagram
-                </h4>
-                <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-300 flex items-start gap-2.5">
-                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-bold">⚠️ Requisito Obrigatório do Instagram:</p>
-                    <p className="mt-0.5">Sua conta do Instagram DEVE ser <strong>Profissional</strong> (Comercial ou Criador de Conteúdo) e estar obrigatoriamente vinculada a uma <strong>Página de Facebook</strong>. Contas pessoais normais não possuem acesso à API da Meta.</p>
-                  </div>
-                </div>
-                <ol className="list-decimal list-inside space-y-2 text-slate-600 dark:text-slate-300 ml-1">
-                  <li>No painel do aplicativo criado, vá até a seção <strong>"Adicionar Produtos ao App"</strong> no menu lateral.</li>
-                  <li>Localize <strong>"Instagram Graph API"</strong> e clique em <strong>"Configurar"</strong>.</li>
-                  <li>Localize <strong>"WhatsApp"</strong> e clique em <strong>"Configurar"</strong> caso vá automatizar WhatsApp também.</li>
-                  <li>Vá no seu aplicativo do Instagram no celular → <em>Configurações → Ferramentas para Criadores/Empresas → Conectar Página do Facebook</em> e certifique-se de que a página está conectada.</li>
-                </ol>
-              </div>
-            </div>
-          )}
-
-          {activeTutorialTab === 'passo3' && (
-            <div className="space-y-4 animate-in fade-in">
-              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 space-y-3">
-                <h4 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
-                  <span className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs">3</span>
-                  Como Gerar o Token Permanente (System User Token que NUNCA Expira)
-                </h4>
-                <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-300 flex items-start gap-2.5">
-                  <Info className="w-4 h-4 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-bold">Por que não usar o token comum do Graph API Explorer?</p>
-                    <p className="mt-0.5">O token comum do Explorer expira após 1 a 60 dias. Se ele expirar, seu robô para de funcionar no meio da campanha! Criando um <strong>Usuário do Sistema</strong> no Business Suite, o token gerado tem validade permanente (Nunca Expira).</p>
-                  </div>
-                </div>
-                <ol className="list-decimal list-inside space-y-2 text-slate-600 dark:text-slate-300 ml-1">
-                  <li>Acesse as Configurações do Negócio: <a href="https://business.facebook.com/settings" target="_blank" rel="noreferrer" className="text-blue-600 dark:text-blue-400 font-semibold underline">business.facebook.com/settings</a>.</li>
-                  <li>No menu lateral esquerdo, clique em <strong>Usuários</strong> → <strong>Usuários do Sistema</strong> (System Users).</li>
-                  <li>Clique no botão <strong>"Adicionar"</strong>, defina o nome como <code>WebFlow Bot</code> e selecione a função <strong>"Administrador"</strong>.</li>
-                  <li>Clique em <strong>"Atribuir Ativos"</strong> (Assign Assets): selecione a sua Página do Facebook e marque a permissão de <strong>Controle Total</strong>.</li>
-                  <li>Clique no botão <strong>"Gerar Novo Token"</strong>:</li>
-                  <ul className="list-disc list-inside ml-4 space-y-1 my-1 text-slate-600 dark:text-slate-300">
-                    <li>Selecione o seu App <code>WebFlow Automação</code>.</li>
-                    <li>Em <strong>Expiração do Token</strong>, selecione: <strong className="text-emerald-600 dark:text-emerald-400 font-mono">Nunca (Never Expire)</strong>.</li>
-                    <li>Marque as permissões obrigatórias da lista abaixo.</li>
-                  </ul>
-                  <li>Permissões obrigatórias a selecionar:</li>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 my-2 font-mono text-[11px]">
-                    <div className="p-2 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">✓ instagram_basic</div>
-                    <div className="p-2 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">✓ instagram_manage_messages</div>
-                    <div className="p-2 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">✓ instagram_manage_comments</div>
-                    <div className="p-2 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">✓ pages_manage_metadata</div>
-                    <div className="p-2 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">✓ pages_read_engagement</div>
-                    <div className="p-2 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">✓ whatsapp_business_messaging</div>
-                  </div>
-                  <li>Clique em <strong>"Gerar Token"</strong>, copie a chave gerada e cole no campo "Page Access Token" acima.</li>
-                </ol>
-              </div>
-            </div>
-          )}
-
-          {activeTutorialTab === 'passo4' && (
-            <div className="space-y-4 animate-in fade-in">
-              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-750 space-y-2">
-                <h4 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
-                  <span className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs">4</span>
-                  Configurando o Webhook e Assinando os Eventos no Meta
-                </h4>
-                <ol className="list-decimal list-inside space-y-2 text-slate-600 dark:text-slate-300 ml-1">
-                  <li>No painel do seu app no Meta for Developers, clique em <strong>Webhooks</strong> no menu esquerdo (ou dentro de Instagram → Webhooks).</li>
-                  <li>Selecione o objeto <strong>"Instagram"</strong> e clique em <strong>"Editar URL de Retorno"</strong> (Edit Callback URL).</li>
-                  <li>No campo <strong>URL de Retorno</strong>, cole a URL: <code className="bg-white dark:bg-slate-800 px-1 py-0.5 rounded text-blue-600 dark:text-blue-400 font-mono">{webhookUrl}</code>.</li>
-                  <li>No campo <strong>Token de Verificação</strong>, cole o seu <code>Verify Token</code> configurado acima.</li>
-                  <li>Clique em <strong>"Verificar e Salvar"</strong>. O Meta enviará um teste instantâneo e aprovará com um visto verde.</li>
-                  <li>Na tabela de campos do Webhook, clique em <strong>"Inscrever-se"</strong> (Subscribe) nos seguintes eventos:</li>
-                  <ul className="list-disc list-inside ml-4 space-y-1 my-1">
-                    <li><strong className="text-blue-600 dark:text-blue-400">messages:</strong> Notifica quando um seguidor manda uma mensagem privada ou clica no botão.</li>
-                    <li><strong className="text-blue-600 dark:text-blue-400">messaging_postbacks:</strong> Notifica o clique exato nos botões da caixa de confirmação.</li>
-                    <li><strong className="text-blue-600 dark:text-blue-400">comments:</strong> Notifica comentários nos seus Reels e Posts para o bot responder instantaneamente com Spintax.</li>
-                  </ul>
-                </ol>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+      {/* 📘 GUIA VISUAL OFICIAL COM 17 PRINTS ANOTADOS (PASSOS A PASSOS COM SETAS E BLINDAGEM DE DADOS) */}
+      <MetaSetupVisualGuide />
 
       {/* 🛑 MANUAL OFICIAL ANTI-BAN DA META: COMO NÃO TOMAR BLOQUEIO */}
       <div className="p-6 md:p-8 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-850 to-slate-900 border border-slate-750 text-white shadow-xl space-y-6">

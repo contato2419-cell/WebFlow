@@ -1,18 +1,19 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { getSupabaseClient } from '../lib/supabase';
+import { INITIAL_CONVERSATIONS, INITIAL_CONTACTS } from '../data/initialConversations';
 
 const AppContext = createContext();
 
-// Mock inicial de fluxos predefinidos no padrão ManyChat com Trava de Seguidor
+// Fluxos oficiais sincronizados com métricas reais dos canais conectados
 const INITIAL_FLOWS = [
   {
     id: 'flow_01_reels_anti_ban',
-    name: 'Reels: Comentário → 🔒 Trava de Seguidor → Link Seguro',
+    name: 'Reels: Comentário → Convite Seguidor → Link Seguro',
     channel: 'instagram',
     active: true,
     folder: 'Tráfego & Leads',
-    lastModified: 'Hoje, 19:35',
-    stats: { sent: 1420, openRate: '98.4%', ctr: '64.2%' },
+    lastModified: 'Hoje, 11:20',
+    stats: { sent: 26, openRate: '100%', ctr: '63.3%' },
     nodes: [
       {
         id: 'node_start',
@@ -29,12 +30,12 @@ const INITIAL_FLOWS = [
       {
         id: 'node_follower_gate',
         type: 'follower_gate',
-        title: '1ª DM: 🔒 Trava de Seguidor (Exigir Follow)',
-        position: { x: 400, y: 120 },
+        title: '1ª DM: Convite & Botão Seguidor',
+        position: { x: 420, y: 150 },
         data: {
-          text: 'Oi {{first_name}}! Preparei esse material com muito carinho exclusivamente para quem me acompanha aqui no Instagram 🎁\n\nDá um pulinho no meu perfil @ygorweb, começa a me seguir e depois toca no botão abaixo pra eu te mandar agora 👇',
+          text: 'Me segue ai pra min te enviar ingrato(a) Tô postando video assim toda semana 🚀\n\nDá um pulinho no meu perfil @ygorweb, começa a me seguir e depois toca no botão abaixo pra eu te mandar agora 👇',
           buttons: [
-            { id: 'b_follow', title: '✅ Já estou te seguindo!', targetNode: 'node_action_tag' }
+            { id: 'b_follow', title: '✅ Já estou te seguindo!', targetNode: 'node_send_link' }
           ],
           fallbackText: 'Opa! Vi aqui que você ainda não começou a me seguir 👀\n\nDá um pulinho lá no perfil @ygorweb rapidinho, clica em Seguir e aperta no botão de novo que eu já te libero na hora!',
           profileHandle: '@ygorweb',
@@ -42,45 +43,32 @@ const INITIAL_FLOWS = [
         }
       },
       {
-        id: 'node_action_tag',
-        type: 'action',
-        title: 'Ação: Aplicar Tag & Abrir Janela 24h',
-        position: { x: 790, y: 120 },
-        data: {
-          actions: [
-            { type: 'add_tag', value: 'seguidor_confirmado' },
-            { type: 'set_field', field: 'Origem', value: 'Instagram_Reels' }
-          ],
-          targetNode: 'node_send_link'
-        }
-      },
-      {
         id: 'node_send_link',
         type: 'message',
         title: '2ª DM: Entrega do Link Seguro',
-        position: { x: 1150, y: 120 },
+        position: { x: 820, y: 150 },
         data: {
-          text: 'Show de bola, {{first_name}}! Muito obrigado por acompanhar meu trabalho! 🎉 Aqui está o seu acesso direto com todos os detalhes: 📲 https://wa.me/5511999998888?text=QueroMeuAcesso',
+          text: 'Tá na mão🚀 \nhttps://x.com/Ithielix/status/2109527114760208745\n\nLink do melhor mousepad de 2026 🏆\nhttps://vt.tiktok.com/ZS9UR1CkPgovL-hgiWV/',
           buttons: [
-            { id: 'b2', title: '👉 Acessar Agora no WhatsApp', url: 'https://wa.me/5511999998888' }
+            { id: 'b2', title: '👉 Acessar no X / Twitter', url: 'https://x.com/Ithielix/status/2109527114760208745' },
+            { id: 'b3', title: '🏆 Link do Mousepad 2026', url: 'https://vt.tiktok.com/ZS9UR1CkPgovL-hgiWV/' }
           ]
         }
       }
     ],
     edges: [
       { from: 'node_start', to: 'node_follower_gate', port: 'output' },
-      { from: 'node_follower_gate', to: 'node_action_tag', port: 'b_follow' },
-      { from: 'node_action_tag', to: 'node_send_link', port: 'output' }
+      { from: 'node_follower_gate', to: 'node_send_link', port: 'b_follow' }
     ]
   },
   {
     id: 'flow_02_whatsapp_qualifier',
     name: 'WhatsApp: Qualificação Automática de Vendas',
     channel: 'whatsapp',
-    active: true,
+    active: false,
     folder: 'Vendas Diretas',
-    lastModified: 'Ontem, 18:30',
-    stats: { sent: 890, openRate: '99.1%', ctr: '78.5%' },
+    lastModified: 'Aguardando Conexão',
+    stats: { sent: 0, openRate: '0%', ctr: '0%' },
     nodes: [
       {
         id: 'node_w_start',
@@ -130,77 +118,19 @@ const INITIAL_TRIGGERS = [
       'Mandei lá no direct, aproveita! 🎯'
     ],
     flowId: 'flow_01_reels_anti_ban',
-    totalExecutions: 1420
-  }
-];
-
-const INITIAL_CONTACTS = [
-  {
-    id: 'sub_001',
-    name: 'Ygor Souza',
-    handle: '@ygorsouza',
-    channel: 'instagram',
-    phone: '+55 11 99999-8888',
-    status: 'Seguidor Verificado',
-    tags: ['lead_engajado_reels', 'seguidor_confirmado', 'vip'],
-    lastInteraction: 'Hoje, 14:02',
-    conversationsCount: 12
-  },
-  {
-    id: 'sub_002',
-    name: 'Mariana Costa',
-    handle: '+55 21 98877-6655',
-    channel: 'whatsapp',
-    phone: '+55 21 98877-6655',
-    status: 'Em Atendimento',
-    tags: ['whatsapp_inbound', 'atacado_interessado'],
-    lastInteraction: 'Hoje, 13:45',
-    conversationsCount: 4
-  }
-];
-
-const INITIAL_CONVERSATIONS = [
-  {
-    id: 'conv_01',
-    contactId: 'sub_001',
-    contactName: 'Ygor Souza',
-    handle: '@ygorsouza',
-    channel: 'instagram',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop',
-    botPaused: false,
-    lastMessage: 'Show de bola, Ygor! Muito obrigado por acompanhar meu trabalho! 🎉',
-    lastTime: '14:02',
-    unread: false,
-    messages: [
-      { id: 'm1', sender: 'user', text: 'LISTA', time: '14:00' },
-      { id: 'm2', sender: 'bot', text: 'Oi Ygor! Preparei esse material com muito carinho exclusivamente para quem me acompanha aqui no Instagram 🎁 Dá um pulinho no meu perfil @ygorweb, começa a me seguir e depois toca no botão abaixo pra eu te enviar na hora 👇', time: '14:00', button: '✅ Já estou te seguindo!' },
-      { id: 'm3', sender: 'user', text: '[Clicou em: ✅ Já estou te seguindo!]', time: '14:01' },
-      { id: 'm4', sender: 'bot', text: 'Show de bola, Ygor! Muito obrigado por acompanhar meu trabalho! 🎉 Aqui está o seu acesso direto com todos os detalhes: 📲 https://wa.me/5511999998888', time: '14:02' }
-    ]
-  },
-  {
-    id: 'conv_02',
-    contactId: 'sub_002',
-    contactName: 'Mariana Costa',
-    handle: '+55 21 98877-6655',
-    channel: 'whatsapp',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop',
-    botPaused: true,
-    lastMessage: 'Vocês vendem para pessoa jurídica com CNPJ?',
-    lastTime: '13:45',
-    unread: true,
-    messages: [
-      { id: 'mw1', sender: 'user', text: 'Olá, gostaria de saber os preços de atacado', time: '13:40' },
-      { id: 'mw2', sender: 'bot', text: 'Olá! Seja muito bem-vindo ao WebFlow. Você já é lojista ou compra no varejo?', time: '13:40' },
-      { id: 'mw3', sender: 'user', text: 'Vocês vendem para pessoa jurídica com CNPJ?', time: '13:45' }
-    ]
+    totalExecutions: 26
   }
 ];
 
 export const AppProvider = ({ children }) => {
-  const [currentView, setCurrentView] = useState('flows'); // Abre diretamente no Flow Builder para fácil visualização
+  const [currentView, setCurrentViewState] = useState('flows');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const setCurrentView = (view) => {
+    setCurrentViewState(view);
+    setIsMobileMenuOpen(false);
+  };
   
-  // Tema: 'light' por padrão para a interface limpa ManyChat
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem('webflow_theme') || 'light';
   });
@@ -218,57 +148,195 @@ export const AppProvider = ({ children }) => {
     setTheme(prev => prev === 'light' ? 'dark' : 'light');
   };
 
-  // Estados principais com garantia de Trava de Seguidor
+  // Limpa nós indesejados e sincroniza métricas reais
+  const cleanFlows = (flowList) => {
+    return flowList.map(flow => {
+      if (flow.id === 'flow_01_reels_anti_ban') {
+        const cleanedNodes = flow.nodes.filter(n => n.id !== 'node_action_tag' && n.type !== 'action');
+        const cleanedEdges = [
+          { from: 'node_start', to: 'node_follower_gate', port: 'output' },
+          { from: 'node_follower_gate', to: 'node_send_link', port: 'b_follow' }
+        ];
+        return {
+          ...flow,
+          name: 'Reels: Comentário → Convite Seguidor → Link Seguro',
+          stats: { sent: 26, openRate: '100%', ctr: '63.3%' },
+          nodes: cleanedNodes,
+          edges: cleanedEdges
+        };
+      }
+      if (flow.channel === 'whatsapp') {
+        return {
+          ...flow,
+          active: false,
+          stats: { sent: 0, openRate: '0%', ctr: '0%' }
+        };
+      }
+      return flow;
+    });
+  };
+
   const [flows, setFlows] = useState(() => {
-    const saved = localStorage.getItem('webflow_flows_v5');
+    const saved = localStorage.getItem('webflow_flows_v9');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (parsed.some(f => f.nodes?.some(n => n.type === 'follower_gate'))) {
-          return parsed;
-        }
+        return cleanFlows(parsed);
       } catch (e) {}
     }
     return INITIAL_FLOWS;
   });
 
   const [triggers, setTriggers] = useState(() => {
-    const saved = localStorage.getItem('webflow_triggers_v5');
+    const saved = localStorage.getItem('webflow_triggers_v6');
     return saved ? JSON.parse(saved) : INITIAL_TRIGGERS;
   });
 
   const [contacts, setContacts] = useState(() => {
-    const saved = localStorage.getItem('webflow_contacts');
+    const saved = localStorage.getItem('webflow_contacts_v10');
     return saved ? JSON.parse(saved) : INITIAL_CONTACTS;
   });
 
   const [conversations, setConversations] = useState(() => {
-    const saved = localStorage.getItem('webflow_conversations_v5');
-    return saved ? JSON.parse(saved) : INITIAL_CONVERSATIONS;
+    // Limpeza de versões anteriores com dados mockados
+    try {
+      localStorage.removeItem('webflow_conversations_v20');
+      localStorage.removeItem('webflow_conversations_v21');
+      localStorage.removeItem('webflow_conversations_v22');
+      localStorage.removeItem('webflow_conversations_v25');
+    } catch (e) {}
+
+    const saved = localStorage.getItem('webflow_conversations_v26');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0 && !parsed.some(c => c.handle === '@aa_santana_')) {
+          return parsed;
+        }
+      } catch (e) {}
+    }
+    return INITIAL_CONVERSATIONS;
   });
 
   const [channels, setChannels] = useState(() => {
-    const saved = localStorage.getItem('webflow_channels');
+    const saved = localStorage.getItem('webflow_channels_v2');
     return saved ? JSON.parse(saved) : {
-      instagram: { connected: false, accountName: '@ygorweb', pageId: '1299815348552748', verified: true },
+      instagram: { 
+        connected: true, 
+        accountName: '@ygorweb', 
+        pageId: '1299815346552748', 
+        verified: true,
+        avatar: '/avatar_ygorweb.jpg',
+        token: 'EAAdPoo2JfNUBSrpDVADHAZBWNClCWCaLngml0bbTRS5dv0I8RX4jceRChZBi3pZBkg6xmr3MIfMQSTvvMMLJG8RP4lfn97w2M0xZAbdWFA9BETDkfzfjP3MMlO1eoIMAehygJsCdinlt1g2w1Vqx3lZBnb0ZBmHUti2plKKatMZClKW2SIKL3jGwXOwipcvk65pZCHHbK0dB'
+      },
       whatsapp: { connected: false, number: '', wabaId: '', verified: false },
       messenger: { connected: false, pageId: '' },
       telegram: { connected: false, botUsername: '' }
     };
   });
 
-  const [selectedFlowId, setSelectedFlowId] = useState(flows[0]?.id || null);
+  const [selectedFlowId, setSelectedFlowId] = useState(() => {
+    return localStorage.getItem('webflow_selected_flow_id') || 'flow_01_reels_anti_ban';
+  });
+
+  useEffect(() => {
+    if (selectedFlowId) {
+      localStorage.setItem('webflow_selected_flow_id', selectedFlowId);
+    }
+  }, [selectedFlowId]);
+
+  const isInitialSyncDone = useRef(false);
+
+  // Sincronização com o Backend KV da Cloudflare (Kill-Switch em tempo real)
+  const syncFlowToBackend = async (flowsList) => {
+    try {
+      const instaFlow = flowsList.find(f => f.channel === 'instagram');
+      const is_active = Boolean(instaFlow?.active);
+
+      const triggerNode = instaFlow?.nodes?.find(n => n.type === 'trigger');
+      const gateNode = instaFlow?.nodes?.find(n => n.type === 'follower_gate');
+      const linkNode = instaFlow?.nodes?.find(n => n.type === 'message' || n.id === 'node_send_link');
+
+      const keyword = triggerNode?.data?.keyword || 'LISTA';
+      const delaySeconds = triggerNode?.data?.delaySeconds || 15;
+      const antiBanJitter = triggerNode?.data?.antiBanJitter || 8;
+      const firstDmTitle = gateNode?.data?.title || "Me segue ai pra min te enviar ingrato(a) 🚀";
+      const firstDmSubtitle = gateNode?.data?.subtitle || "Tô postando vídeo assim toda semana! Clica no botão abaixo pra liberar seu link 👇";
+      const buttonText = gateNode?.data?.buttons?.[0]?.title || "✅ Já estou te seguindo!";
+      const finalLinkMessage = linkNode?.data?.text || `Tá na mão🚀 \nhttps://x.com/Ithielix/status/2109527114760208745\n\nLink do melhor mousepad de 2026 🏆\nhttps://vt.tiktok.com/ZS9UR1CkPgovL-hgiWV/`;
+
+      await fetch('/api/state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          is_active,
+          keyword,
+          delaySeconds,
+          antiBanJitter,
+          firstDmTitle,
+          firstDmSubtitle,
+          buttonText,
+          finalLinkMessage
+        })
+      });
+    } catch (e) {
+      console.warn('Erro ao sincronizar com KV:', e);
+    }
+  };
+
+  // Carrega o estado de ativação do Backend KV e as conversas reais da Meta ao inicializar
+  useEffect(() => {
+    fetch('/api/state', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success && data.state && typeof data.state.is_active === 'boolean') {
+          setFlows(prev => {
+            const updated = prev.map(f => {
+              if (f.channel === 'instagram') {
+                return { ...f, active: data.state.is_active };
+              }
+              return f;
+            });
+            try {
+              localStorage.setItem('webflow_flows_v9', JSON.stringify(updated));
+            } catch (e) {}
+            return updated;
+          });
+        }
+      })
+      .catch(err => console.warn('Erro ao carregar /api/state:', err))
+      .finally(() => {
+        isInitialSyncDone.current = true;
+      });
+
+    // Sincroniza conversas reais da Meta API em background
+    fetch('/api/conversations', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success && data.conversations && data.conversations.length > 0) {
+          setConversations(data.conversations);
+          try {
+            localStorage.setItem('webflow_conversations_v26', JSON.stringify(data.conversations));
+          } catch (e) {}
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Sincronização localStorage com debounce para não travar o drag dos nós
   useEffect(() => {
     const timer = setTimeout(() => {
-      localStorage.setItem('webflow_flows_v5', JSON.stringify(flows));
-    }, 150);
+      localStorage.setItem('webflow_flows_v9', JSON.stringify(flows));
+      // Só dispara sincronização automática com a Cloudflare se o carregamento inicial já foi concluído!
+      if (isInitialSyncDone.current) {
+        syncFlowToBackend(flows);
+      }
+    }, 300);
     return () => clearTimeout(timer);
   }, [flows]);
 
   useEffect(() => {
-    localStorage.setItem('webflow_triggers_v5', JSON.stringify(triggers));
+    localStorage.setItem('webflow_triggers_v6', JSON.stringify(triggers));
   }, [triggers]);
 
   useEffect(() => {
@@ -276,16 +344,106 @@ export const AppProvider = ({ children }) => {
   }, [contacts]);
 
   useEffect(() => {
-    localStorage.setItem('webflow_conversations_v5', JSON.stringify(conversations));
+    localStorage.setItem('webflow_conversations_v26', JSON.stringify(conversations));
   }, [conversations]);
 
   useEffect(() => {
     localStorage.setItem('webflow_channels', JSON.stringify(channels));
   }, [channels]);
 
+  // Ações do Live Chat Humano (Meta Business Suite Architecture)
+  const toggleBotPause = (conversationId) => {
+    setConversations(prev => {
+      const updated = prev.map(c => {
+        if (c.id === conversationId || c.contactId === conversationId) {
+          return { ...c, botPaused: !c.botPaused };
+        }
+        return c;
+      });
+      try {
+        localStorage.setItem('webflow_conversations_v26', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+  };
+
+  const sendLiveChatMessage = (conversationId, text) => {
+    if (!text || !text.trim()) return;
+    const nowBr = new Date().toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' });
+    const newMsg = {
+      id: 'live_msg_' + Date.now(),
+      sender: 'agent',
+      text: text.trim(),
+      time: nowBr,
+      timestamp: new Date().toISOString()
+    };
+
+    setConversations(prev => {
+      const updated = prev.map(c => {
+        if (c.id === conversationId || c.contactId === conversationId) {
+          return {
+            ...c,
+            lastMessage: text.trim(),
+            lastTime: nowBr,
+            updatedTime: new Date().toISOString(),
+            messages: [...(c.messages || []), newMsg]
+          };
+        }
+        return c;
+      });
+      try {
+        localStorage.setItem('webflow_conversations_v26', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+  };
+
+  const updateContactAvatar = (conversationId, avatarUrl) => {
+    setConversations(prev => {
+      const updated = prev.map(c => {
+        if (c.id === conversationId || c.contactId === conversationId) {
+          return { ...c, avatar: avatarUrl };
+        }
+        return c;
+      });
+      try {
+        localStorage.setItem('webflow_conversations_v26', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+  };
+
+  const togglePinConversation = (conversationId) => {
+    setConversations(prev => {
+      const updated = prev.map(c => {
+        if (c.id === conversationId || c.contactId === conversationId) {
+          return { ...c, pinned: !c.pinned };
+        }
+        return c;
+      });
+      try {
+        localStorage.setItem('webflow_conversations_v26', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+  };
+
+
   // Ações de Fluxos
-  const updateFlow = (flowId, updatedData) => {
-    setFlows(prev => prev.map(f => f.id === flowId ? { ...f, ...updatedData, lastModified: 'Agora' } : f));
+  const updateFlow = async (flowId, updatedData) => {
+    setFlows(prev => {
+      const updated = prev.map(f => f.id === flowId ? { ...f, ...updatedData, lastModified: 'Agora' } : f);
+      try {
+        localStorage.setItem('webflow_flows_v9', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+
+    if (updatedData.active !== undefined) {
+      isInitialSyncDone.current = true;
+      const nextFlows = flows.map(f => f.id === flowId ? { ...f, ...updatedData } : f);
+      await syncFlowToBackend(nextFlows);
+    }
   };
 
   const createFlow = (name, channel) => {
@@ -326,34 +484,91 @@ export const AppProvider = ({ children }) => {
     return newId;
   };
 
-  const toggleBotPause = (convId) => {
-    setConversations(prev => prev.map(c => {
-      if (c.id === convId) {
-        return { ...c, botPaused: !c.botPaused };
+  const [isRunningAutomation, setIsRunningAutomation] = useState(false);
+  const [automationStatus, setAutomationStatus] = useState('');
+
+  // Motor Oficial: Processa comentários reais nos Reels do Instagram e dispara DMs e respostas públicas
+  const processLiveAutomation = async () => {
+    try {
+      const activeFlow = flows.find(f => f.channel === 'instagram' && f.active);
+      if (!activeFlow) {
+        setAutomationStatus('Automação do Instagram desligada.');
+        setTimeout(() => setAutomationStatus(''), 2500);
+        return;
       }
-      return c;
-    }));
+
+      setIsRunningAutomation(true);
+      setAutomationStatus('Buscando novos comentários no Reel...');
+      
+      const triggerNode = activeFlow?.nodes?.find(n => n.type === 'trigger');
+      const gateNode = activeFlow?.nodes?.find(n => n.type === 'follower_gate');
+      const linkNode = activeFlow?.nodes?.find(n => n.type === 'message' || n.id === 'node_send_link');
+
+      const keyword = triggerNode?.data?.keyword || 'LISTA';
+      const delaySeconds = triggerNode?.data?.delaySeconds || 15;
+      const antiBanJitter = triggerNode?.data?.antiBanJitter || 8;
+      const firstDmTitle = gateNode?.data?.title || "Me segue ai pra min te enviar ingrato(a) 🚀";
+      const firstDmSubtitle = gateNode?.data?.subtitle || "Tô postando vídeo assim toda semana! Clica no botão abaixo pra liberar seu link 👇";
+      const buttonText = gateNode?.data?.buttons?.[0]?.title || "✅ Já estou te seguindo!";
+      const finalLinkMessage = linkNode?.data?.text || `Tá na mão🚀 \nhttps://x.com/Ithielix/status/2109527114760208745\n\nLink do melhor mousepad de 2026 🏆\nhttps://vt.tiktok.com/ZS9UR1CkPgovL-hgiWV/`;
+
+      const res = await fetch('/api/auto-reply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          is_active: true,
+          keyword, 
+          firstDmTitle,
+          firstDmSubtitle,
+          buttonText,
+          finalLinkMessage, 
+          delaySeconds, 
+          antiBanJitter 
+        })
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        if (data.processedCount > 0) {
+          setAutomationStatus(`✅ ${data.processedCount} lead(s) processados com delay anti-ban!`);
+          // Incrementa contagem de envios
+          setFlows(prev => prev.map(f => f.id === activeFlow.id ? {
+            ...f,
+            stats: { ...f.stats, sent: (f.stats?.sent || 0) + data.processedCount }
+          } : f));
+        } else if (data.skipped?.length > 0 && data.skipped.some(s => s.reason === 'waiting_human_delay')) {
+          setAutomationStatus('⏳ Aguardando delay humano anti-ban para novos comentários...');
+        } else {
+          setAutomationStatus('Nenhum novo comentário pendente no momento.');
+        }
+      } else {
+        setAutomationStatus('Automação pausada ou em espera.');
+      }
+      return data;
+    } catch (e) {
+      console.warn('Erro ao processar automação:', e);
+      setAutomationStatus('Conexão ativa');
+    } finally {
+      setIsRunningAutomation(false);
+      setTimeout(() => setAutomationStatus(''), 4000);
+    }
   };
 
-  const sendLiveChatMessage = (convId, text) => {
-    setConversations(prev => prev.map(c => {
-      if (c.id === convId) {
-        const newMsg = {
-          id: 'm_' + Date.now(),
-          sender: 'agent',
-          text,
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        };
-        return {
-          ...c,
-          lastMessage: text,
-          lastTime: newMsg.time,
-          messages: [...c.messages, newMsg]
-        };
-      }
-      return c;
-    }));
-  };
+  // Loop inteligente de vigilância em tempo real (apenas se a automação do Instagram estiver ligada)
+  useEffect(() => {
+    const isInstaActive = flows.some(f => f.channel === 'instagram' && f.active);
+    if (!isInstaActive) return;
+
+    // Dispara uma verificação inicial
+    processLiveAutomation();
+
+    // Loop espaçado a cada 60 segundos para evitar sobrecarga
+    const timer = setInterval(() => {
+      processLiveAutomation();
+    }, 60000);
+
+    return () => clearInterval(timer);
+  }, [flows.find(f => f.channel === 'instagram')?.active]);
 
   return (
     <AppContext.Provider value={{
@@ -372,10 +587,18 @@ export const AppProvider = ({ children }) => {
       contacts,
       setContacts,
       conversations,
+      setConversations,
+      togglePinConversation,
+      updateContactAvatar,
       toggleBotPause,
       sendLiveChatMessage,
       channels,
-      setChannels
+      setChannels,
+      processLiveAutomation,
+      isRunningAutomation,
+      automationStatus,
+      isMobileMenuOpen,
+      setIsMobileMenuOpen
     }}>
       {children}
     </AppContext.Provider>

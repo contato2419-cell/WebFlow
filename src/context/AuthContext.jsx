@@ -8,18 +8,25 @@ export const AuthProvider = ({ children }) => {
     const saved = localStorage.getItem('vitrixflow_current_user');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        return {
+          ...parsed,
+          name: 'Ygor Souza',
+          handle: '@ygorweb',
+          avatar: '/avatar_ygorweb.jpg'
+        };
       } catch (e) {
         return null;
       }
     }
-    // Default initial user for instant access
+    // Default initial user with real Instagram profile photo
     return {
       id: 'usr_owner_default',
       name: 'Ygor Souza',
       email: 'contato2419@gmail.com',
-      workspace: 'Vitrix Workspace Principal',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces'
+      handle: '@ygorweb',
+      workspace: 'VitrixFlow Workspace',
+      avatar: '/avatar_ygorweb.jpg'
     };
   });
 
@@ -45,7 +52,7 @@ export const AuthProvider = ({ children }) => {
           email: data.user.email,
           name: data.user.user_metadata?.name || email.split('@')[0],
           workspace: 'Vitrix Workspace Principal',
-          avatar: data.user.user_metadata?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop'
+          avatar: data.user.user_metadata?.avatar || '/avatar_ygorweb.jpg'
         };
         setUser(loggedUser);
         return { success: true };
@@ -55,8 +62,8 @@ export const AuthProvider = ({ children }) => {
           id: 'usr_' + Math.random().toString(36).substring(2, 9),
           name: email.split('@')[0],
           email,
-          workspace: 'Vitrix Workspace Principal',
-          avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop'
+          workspace: 'VitrixFlow Workspace',
+          avatar: '/avatar_ygorweb.jpg'
         };
         setUser(localUser);
         return { success: true };

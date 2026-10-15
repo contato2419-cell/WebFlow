@@ -1,3 +1,7 @@
 name = "webflow-app"
 compatibility_date = "2026-10-13"
 pages_build_output_dir = "dist"
+
+[[kv_namespaces]]
+binding = "WEBFLOW_KV"
+id = "6ffd8aa59e6a43ebaee8c87a7dd5ceb1"
