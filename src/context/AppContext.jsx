@@ -124,7 +124,17 @@ const INITIAL_TRIGGERS = [
   }
 ];
 
-function formatMetaButtonTitle(str) {
+export function cleanKeywordString(kw) {
+  if (!kw) return 'LISTA';
+  const parts = String(kw)
+    .split(/[,;|]/)
+    .map(k => k.trim().toUpperCase())
+    .filter(Boolean);
+  const unique = [...new Set(parts)];
+  return unique.length > 0 ? unique.join(', ') : 'LISTA';
+}
+
+export function formatMetaButtonTitle(str) {
   if (!str) return '✅ Já estou seguindo';
   str = String(str).trim();
   if (str.length <= 20) return str;
@@ -176,15 +186,91 @@ export const AppProvider = ({ children }) => {
     setTheme(prev => prev === 'light' ? 'dark' : 'light');
   };
 
-  // Limpa nós indesejados e sincroniza métricas reais
+  // Limpa nós indesejados, deduplica palavras-chave e PRESERVA todas as conexões
   const cleanFlows = (flowList) => {
     return flowList.map(flow => {
       if (flow.id === 'flow_01_reels_anti_ban') {
-        const cleanedNodes = flow.nodes.filter(n => n.id !== 'node_action_tag' && n.type !== 'action');
-        const cleanedEdges = [
-          { from: 'node_start', to: 'node_follower_gate', port: 'output' },
-          { from: 'node_follower_gate', to: 'node_send_link', port: 'b_follow' }
-        ];
+        const cleanedNodes = (flow.nodes || [])
+          .filter(n => n.id !== 'node_action_tag' && n.type !== 'action')
+          .map(n => {
+            if (n.type === 'trigger') {
+              return {
+                ...n,
+                data: {
+                  ...n.data,
+                  keyword: cleanKeywordString(n.data?.keyword || 'LISTA')
+                }
+              };
+            }
+            if (n.type === 'follower_gate') {
+              const rawBtn = n.data?.buttons?.[0]?.title || '✅ Já estou seguindo';
+              const cleanBtn = formatMetaButtonTitle(rawBtn);
+              const btns = (n.data?.buttons || []).map((b, idx) => idx === 0 ? { ...b, title: cleanBtn } : b);
+              return {
+                ...n,
+                data: {
+                  ...n.data,
+                  buttons: btns.length > 0 ? btns : [{ id: 'b_follow_' + n.id, title: '✅ Já estou seguindo', targetNode: '' }]
+                }
+              };
+            }
+            return n;
+          });
+
+        const validNodeIds = new Set(cleanedNodes.map(n => n.id));
+        
+        // 1. Preserva TODAS as conexões que o usuário criou entre nós existentes
+        let cleanedEdges = (flow.edges || []).filter(e => validNodeIds.has(e.from) && validNodeIds.has(e.to));
+
+        // 2. Garante as conexões da esteira superior caso os nós existam
+        if (validNodeIds.has('node_start') && validNodeIds.has('node_follower_gate')) {
+          if (!cleanedEdges.some(e => e.from === 'node_start')) {
+            cleanedEdges.push({ from: 'node_start', to: 'node_follower_gate', port: 'output' });
+          }
+        }
+        if (validNodeIds.has('node_follower_gate') && validNodeIds.has('node_send_link')) {
+          if (!cleanedEdges.some(e => e.from === 'node_follower_gate')) {
+            const gateNode = cleanedNodes.find(n => n.id === 'node_follower_gate');
+            const port = gateNode?.data?.buttons?.[0]?.id || 'b_follow';
+            cleanedEdges.push({ from: 'node_follower_gate', to: 'node_send_link', port });
+          }
+        }
+
+        // 3. Recuperação Inteligente de Nós Secundários Desconectados (ex: Esteira Inferior)
+        cleanedNodes.forEach(node => {
+          if (node.data?.buttons) {
+            node.data.buttons.forEach(btn => {
+              if (btn.targetNode && validNodeIds.has(btn.targetNode)) {
+                if (!cleanedEdges.some(e => e.from === node.id && e.to === btn.targetNode)) {
+                  cleanedEdges.push({ from: node.id, to: btn.targetNode, port: btn.id || 'output' });
+                }
+              }
+            });
+          }
+        });
+
+        // 4. Se houver um gatilho secundário órfão e um bloco de seguidor ou mensagem órfão logo em seguida
+        const extraTriggers = cleanedNodes.filter(n => n.type === 'trigger' && n.id !== 'node_start');
+        const extraGates = cleanedNodes.filter(n => n.type === 'follower_gate' && n.id !== 'node_follower_gate');
+        const extraMessages = cleanedNodes.filter(n => n.type === 'message' && n.id !== 'node_send_link');
+
+        extraTriggers.forEach((trig, idx) => {
+          const hasOut = cleanedEdges.some(e => e.from === trig.id);
+          if (!hasOut && extraGates[idx]) {
+            cleanedEdges.push({ from: trig.id, to: extraGates[idx].id, port: 'output' });
+          }
+        });
+
+        extraGates.forEach((gate, idx) => {
+          const btn = gate.data?.buttons?.[0];
+          const hasOut = cleanedEdges.some(e => e.from === gate.id);
+          if (!hasOut && extraMessages[idx]) {
+            const btnId = btn?.id || ('b_follow_' + gate.id);
+            cleanedEdges.push({ from: gate.id, to: extraMessages[idx].id, port: btnId });
+            if (btn) btn.targetNode = extraMessages[idx].id;
+          }
+        });
+
         return {
           ...flow,
           name: 'Reels: Comentário → Convite Seguidor → Link Seguro',
@@ -289,12 +375,17 @@ export const AppProvider = ({ children }) => {
       const gateNode = allGateNodes.find(n => n.id === selectedFlowId) || allGateNodes[0];
       const linkNode = instaFlow?.nodes?.find(n => n.type === 'message' || n.id === 'node_send_link');
 
-      // Coleta todas as palavras-chave dos gatilhos do fluxo (ex: LISTA, REA)
-      const triggerKeywords = (instaFlow?.nodes || [])
+      // Coleta todas as palavras-chave individuais dos gatilhos do fluxo e deduplica estritamente
+      const allWords = [];
+      (instaFlow?.nodes || [])
         .filter(n => n.type === 'trigger' && n.data?.keyword)
-        .map(n => n.data.keyword.trim())
-        .filter(Boolean);
-      const keyword = triggerKeywords.length > 0 ? triggerKeywords.join(', ') : (triggerNode?.data?.keyword || 'LISTA');
+        .forEach(n => {
+          const parts = String(n.data.keyword).split(/[,;|]/).map(k => k.trim().toUpperCase()).filter(Boolean);
+          parts.forEach(p => {
+            if (!allWords.includes(p)) allWords.push(p);
+          });
+        });
+      const keyword = allWords.length > 0 ? allWords.join(', ') : 'LISTA';
       const delaySeconds = triggerNode?.data?.delaySeconds || 15;
       const antiBanJitter = triggerNode?.data?.antiBanJitter || 8;
       
@@ -367,7 +458,7 @@ export const AppProvider = ({ children }) => {
                       ...node,
                       data: {
                         ...node.data,
-                        keyword: data.state.keyword || node.data?.keyword || 'LISTA'
+                        keyword: cleanKeywordString(node.data?.keyword || 'LISTA')
                       }
                     };
                   }
@@ -597,12 +688,17 @@ export const AppProvider = ({ children }) => {
       const gateNode = allGateNodes.find(n => n.id === selectedFlowId) || allGateNodes[0];
       const linkNode = activeFlow?.nodes?.find(n => n.type === 'message' || n.id === 'node_send_link');
 
-      // Coleta todas as palavras-chave de todos os blocos de gatilho do fluxo
-      const triggerKeywords = (activeFlow?.nodes || [])
+      // Coleta todas as palavras-chave de todos os blocos de gatilho do fluxo com deduplicação
+      const allWords = [];
+      (activeFlow?.nodes || [])
         .filter(n => n.type === 'trigger' && n.data?.keyword)
-        .map(n => n.data.keyword.trim())
-        .filter(Boolean);
-      const keyword = triggerKeywords.length > 0 ? triggerKeywords.join(', ') : (triggerNode?.data?.keyword || 'LISTA');
+        .forEach(n => {
+          const parts = String(n.data.keyword).split(/[,;|]/).map(k => k.trim().toUpperCase()).filter(Boolean);
+          parts.forEach(p => {
+            if (!allWords.includes(p)) allWords.push(p);
+          });
+        });
+      const keyword = allWords.length > 0 ? allWords.join(', ') : 'LISTA';
 
       const delaySeconds = triggerNode?.data?.delaySeconds || 15;
       const antiBanJitter = triggerNode?.data?.antiBanJitter || 8;

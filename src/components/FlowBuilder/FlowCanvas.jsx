@@ -28,7 +28,7 @@ import {
   Lock
 } from 'lucide-react';
 import { InstagramIcon, WhatsAppIcon } from '../Icons';
-import { useApp } from '../../context/AppContext';
+import { useApp, cleanKeywordString } from '../../context/AppContext';
 
 export const FlowCanvas = ({ onOpenSimulator }) => {
   const { 
@@ -75,11 +75,24 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
     };
   }, [flowDropdownOpen]);
 
-  // Auto-recuperação: Garante que todo bloco do tipo 'follower_gate' possua o botão de confirmação do seguidor
+  // Auto-recuperação: Garante que todo bloco do tipo 'follower_gate' possua o botão de confirmação, limpa palavras duplicadas e preserva conexões
   useEffect(() => {
     if (!currentFlow?.nodes) return;
     let needsRepair = false;
     const repairedNodes = currentFlow.nodes.map(n => {
+      if (n.type === 'trigger') {
+        const cleanedKw = cleanKeywordString(n.data?.keyword || 'LISTA');
+        if (n.data?.keyword !== cleanedKw) {
+          needsRepair = true;
+          return {
+            ...n,
+            data: {
+              ...n.data,
+              keyword: cleanedKw
+            }
+          };
+        }
+      }
       if (n.type === 'follower_gate') {
         const hasValidButton = Array.isArray(n.data?.buttons) && n.data.buttons.length > 0;
         if (!hasValidButton) {
@@ -95,14 +108,14 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
               buttons: [{ id: btnId, title: '✅ Já estou seguindo', targetNode: targetId }]
             }
           };
-        } else if (n.data.buttons.some(b => b.title === '✅ Já estou te seguindo!')) {
+        } else if (n.data.buttons.some(b => b.title === '✅ Já estou te seguindo!' || b.title.length > 20)) {
           // Atualiza automaticamente o texto antigo que passava de 20 chars para a versão segura que a Meta aceita sem cortar
           needsRepair = true;
           return {
             ...n,
             data: {
               ...n.data,
-              buttons: n.data.buttons.map(b => b.title === '✅ Já estou te seguindo!' ? { ...b, title: '✅ Já estou seguindo' } : b)
+              buttons: n.data.buttons.map(b => (b.title === '✅ Já estou te seguindo!' || b.title.length > 20) ? { ...b, title: '✅ Já estou seguindo' } : b)
             }
           };
         }
@@ -110,16 +123,32 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
       return n;
     });
 
+    // Se havia ligação saindo de 'output' no follower_gate, redireciona para a porta do botão de verificação
+    let repairedEdges = (currentFlow.edges || []).map(e => {
+      const sourceNode = currentFlow.nodes.find(n => n.id === e.from);
+      if (sourceNode?.type === 'follower_gate' && (!e.port || e.port === 'output')) {
+        const btnId = sourceNode.data?.buttons?.[0]?.id || ('b_follow_' + sourceNode.id);
+        return { ...e, port: btnId };
+      }
+      return e;
+    });
+
+    // Garante que todo botão com targetNode tenha a respectiva aresta desenhada
+    repairedNodes.forEach(node => {
+      if (node.data?.buttons) {
+        node.data.buttons.forEach(btn => {
+          if (btn.targetNode && currentFlow.nodes.some(n => n.id === btn.targetNode)) {
+            const btnPort = btn.id || ('b_follow_' + node.id);
+            if (!repairedEdges.some(e => e.from === node.id && e.to === btn.targetNode)) {
+              repairedEdges.push({ from: node.id, to: btn.targetNode, port: btnPort });
+              needsRepair = true;
+            }
+          }
+        });
+      }
+    });
+
     if (needsRepair) {
-      // Se havia ligação saindo de 'output', redireciona para a porta do botão de verificação
-      const repairedEdges = (currentFlow.edges || []).map(e => {
-        const sourceNode = currentFlow.nodes.find(n => n.id === e.from);
-        if (sourceNode?.type === 'follower_gate' && (!e.port || e.port === 'output')) {
-          const btnId = 'b_follow_' + sourceNode.id;
-          return { ...e, port: btnId };
-        }
-        return e;
-      });
       updateFlow(currentFlow.id, { nodes: repairedNodes, edges: repairedEdges });
     }
   }, [currentFlow?.id, currentFlow?.nodes]);
@@ -435,7 +464,7 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
       newNode.type = 'follower_gate';
       newNode.data = {
         text: 'Oi {{first_name}}! Preparei esse material com muito carinho exclusivamente para quem me acompanha aqui no Instagram 🎁\n\nDá um pulinho no meu perfil @ygorweb, começa a me seguir e depois toca no botão abaixo pra eu te enviar na hora 👇',
-        buttons: [{ id: 'b_follow_' + Date.now(), title: '✅ Já estou te seguindo!', targetNode: '' }],
+        buttons: [{ id: 'b_follow_' + Date.now(), title: '✅ Já estou seguindo', targetNode: '' }],
         fallbackText: 'Opa! Vi aqui que você ainda não começou a me seguir 👀 Dá um pulinho lá no perfil @ygorweb rapidinho, clica em Seguir e aperta no botão de novo que eu já te libero na hora!',
         profileHandle: '@ygorweb',
         requireFollow: true
@@ -1368,7 +1397,7 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
                           <button
                             type="button"
                             onClick={() => {
-                              const defaultButton = { id: 'b_follow_' + Date.now(), title: '✅ Já estou te seguindo!', targetNode: '' };
+                              const defaultButton = { id: 'b_follow_' + Date.now(), title: '✅ Já estou seguindo', targetNode: '' };
                               const updatedNodes = currentFlow.nodes.map(n => n.id === selectedNode.id ? {
                                 ...n,
                                 data: { ...n.data, buttons: [defaultButton] }

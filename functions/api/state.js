@@ -102,11 +102,17 @@ export async function onRequestPost(context) {
   try {
     const body = await request.json().catch(() => ({}));
     const current = await getStoredState(env);
-    const currentState = current ? { ...DEFAULT_STATE, ...current } : DEFAULT_STATE;
+    let cleanKeyword = currentState.keyword;
+    if (body.keyword !== undefined) {
+      const parts = String(body.keyword).split(/[,;|]/).map(k => k.trim().toUpperCase()).filter(Boolean);
+      const unique = [...new Set(parts)];
+      cleanKeyword = unique.length > 0 ? unique.join(', ') : 'LISTA';
+    }
 
     const updatedState = {
       ...currentState,
       ...body,
+      keyword: cleanKeyword,
       is_active: body.is_active !== undefined ? Boolean(body.is_active) : currentState.is_active
     };
 
