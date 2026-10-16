@@ -176,7 +176,7 @@ export const CommentsTriggerView = () => {
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1.5">Nome do Gatilho</label>
                 <input
                   type="text"
-                  value={editingTrigger.name}
+                  value={editingTrigger.name ?? ''}
                   onChange={(e) => {
                     const updated = { ...editingTrigger, name: e.target.value };
                     setEditingTrigger(updated);
@@ -192,13 +192,13 @@ export const CommentsTriggerView = () => {
                 </label>
                 <input
                   type="text"
-                  value={editingTrigger.keyword}
+                  value={editingTrigger.keyword ?? ''}
                   onChange={(e) => {
                     const updated = { ...editingTrigger, keyword: e.target.value.toUpperCase() };
                     setEditingTrigger(updated);
                     setTriggers(prev => prev.map(t => t.id === updated.id ? updated : t));
                   }}
-                  className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-mono uppercase font-bold focus:outline-none focus:border-blue-500"
+                  className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-mono uppercase font-bold focus:ring-2 focus:ring-blue-500"
                   placeholder="EX: QUERO"
                 />
               </div>

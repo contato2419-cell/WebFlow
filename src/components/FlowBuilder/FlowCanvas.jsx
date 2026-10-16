@@ -75,24 +75,11 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
     };
   }, [flowDropdownOpen]);
 
-  // Auto-recuperação: Garante que todo bloco do tipo 'follower_gate' possua o botão de confirmação, limpa palavras duplicadas e preserva conexões
+  // Auto-recuperação: Garante que todo bloco do tipo 'follower_gate' possua o botão de confirmação e preserva conexões
   useEffect(() => {
     if (!currentFlow?.nodes) return;
     let needsRepair = false;
     const repairedNodes = currentFlow.nodes.map(n => {
-      if (n.type === 'trigger') {
-        const cleanedKw = cleanKeywordString(n.data?.keyword || 'LISTA');
-        if (n.data?.keyword !== cleanedKw) {
-          needsRepair = true;
-          return {
-            ...n,
-            data: {
-              ...n.data,
-              keyword: cleanedKw
-            }
-          };
-        }
-      }
       if (n.type === 'follower_gate') {
         const hasValidButton = Array.isArray(n.data?.buttons) && n.data.buttons.length > 0;
         if (!hasValidButton) {
@@ -108,14 +95,14 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
               buttons: [{ id: btnId, title: '✅ Já estou seguindo', targetNode: targetId }]
             }
           };
-        } else if (n.data.buttons.some(b => b.title === '✅ Já estou te seguindo!' || b.title.length > 20)) {
+        } else if (n.data.buttons.some(b => b.title === '✅ Já estou te seguindo!')) {
           // Atualiza automaticamente o texto antigo que passava de 20 chars para a versão segura que a Meta aceita sem cortar
           needsRepair = true;
           return {
             ...n,
             data: {
               ...n.data,
-              buttons: n.data.buttons.map(b => (b.title === '✅ Já estou te seguindo!' || b.title.length > 20) ? { ...b, title: '✅ Já estou seguindo' } : b)
+              buttons: n.data.buttons.map(b => b.title === '✅ Já estou te seguindo!' ? { ...b, title: '✅ Já estou seguindo' } : b)
             }
           };
         }
@@ -1134,7 +1121,8 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
               <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1.5">Nome do Bloco</label>
               <input
                 type="text"
-                value={selectedNode.title}
+                value={selectedNode.title ?? ''}
+                placeholder="Nome do Bloco"
                 onChange={(e) => {
                   const updatedNodes = currentFlow.nodes.map(n => n.id === selectedNode.id ? { ...n, title: e.target.value } : n);
                   updateFlow(currentFlow.id, { nodes: updatedNodes });
@@ -1246,7 +1234,8 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
                   </label>
                   <input
                     type="text"
-                    value={selectedNode.data?.profileHandle || '@ygorweb'}
+                    value={selectedNode.data?.profileHandle ?? ''}
+                    placeholder="@ygorweb"
                     onChange={(e) => {
                       const updatedNodes = currentFlow.nodes.map(n => n.id === selectedNode.id ? {
                         ...n,
@@ -1264,7 +1253,8 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
                   </label>
                   <input
                     type="text"
-                    value={selectedNode.data?.title || 'Me segue ai pra min te enviar ingrato(a) 🚀'}
+                    value={selectedNode.data?.title ?? ''}
+                    placeholder="Me segue ai pra min te enviar ingrato(a) 🚀"
                     onChange={(e) => {
                       const updatedNodes = currentFlow.nodes.map(n => n.id === selectedNode.id ? {
                         ...n,
@@ -1273,7 +1263,6 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
                       updateFlow(currentFlow.id, { nodes: updatedNodes });
                     }}
                     className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-semibold"
-                    placeholder="Ex: Me segue ai pra min te enviar ingrato(a) 🚀"
                   />
                 </div>
 
@@ -1283,7 +1272,7 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
                       Mensagem de Convite para Seguir (Texto da DM)
                     </label>
                     {(() => {
-                      const len = (selectedNode.data?.text || selectedNode.data?.subtitle || '').length;
+                      const len = (selectedNode.data?.text !== undefined ? selectedNode.data.text : (selectedNode.data?.subtitle ?? '')).length;
                       return (
                         <span className={`text-[10px] font-bold ${len > 80 ? 'text-amber-500 animate-pulse' : 'text-emerald-500'}`}>
                           {len}/80 chars {len > 80 ? '⚠️ (Meta corta em 80)' : '✅'}
@@ -1293,7 +1282,8 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
                   </div>
                   <textarea
                     rows={4}
-                    value={selectedNode.data?.text || selectedNode.data?.subtitle || ''}
+                    value={selectedNode.data?.text !== undefined ? selectedNode.data.text : (selectedNode.data?.subtitle ?? '')}
+                    placeholder="Tô postando vídeo assim toda semana! Clica no botão abaixo pra receber 📲"
                     onChange={(e) => {
                       const val = e.target.value;
                       const updatedNodes = currentFlow.nodes.map(n => n.id === selectedNode.id ? {
@@ -1304,7 +1294,7 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
                     }}
                     className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white leading-relaxed font-sans"
                   />
-                  {((selectedNode.data?.text || selectedNode.data?.subtitle || '').length > 80) && (
+                  {((selectedNode.data?.text !== undefined ? selectedNode.data.text : (selectedNode.data?.subtitle ?? '')).length > 80) && (
                     <p className="text-[10px] text-amber-500 mt-1 leading-tight">
                       ⚠️ Dica: A Meta corta subtítulos de cartões em 80 caracteres. Encurte 1 ou 2 letras para que emojis no final não sejam cortados!
                     </p>
@@ -1317,7 +1307,8 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
                   </label>
                   <textarea
                     rows={3}
-                    value={selectedNode.data?.fallbackText || 'Opa! Vi aqui que você ainda não começou a me seguir 👀 Dá um pulinho lá no perfil @ygorweb rapidinho, clica em Seguir e aperta no botão de novo que eu já te libero na hora!'}
+                    value={selectedNode.data?.fallbackText ?? ''}
+                    placeholder="Opa! Vi aqui que você ainda não começou a me seguir 👀 Dá um pulinho lá no perfil @ygorweb rapidinho, clica em Seguir e aperta no botão de novo que eu já te libero na hora!"
                     onChange={(e) => {
                       const updatedNodes = currentFlow.nodes.map(n => n.id === selectedNode.id ? {
                         ...n,
@@ -1353,21 +1344,21 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
                             <div key={portId} className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-2">
                               <div className="flex items-center justify-between">
                                 <label className="text-[10px] text-slate-500 font-bold uppercase">Texto do Botão</label>
-                                <span className={`text-[10px] font-bold ${btn.title.length > 20 ? 'text-rose-500' : 'text-indigo-600 dark:text-indigo-400'}`}>
-                                  {btn.title.length}/20 chars (Limite Meta)
+                                <span className={`text-[10px] font-bold ${(btn.title || '').length > 20 ? 'text-rose-500' : 'text-indigo-600 dark:text-indigo-400'}`}>
+                                  {(btn.title || '').length}/20 chars (Limite Meta)
                                 </span>
                               </div>
                               <input
                                 type="text"
                                 maxLength={20}
-                                value={btn.title}
+                                value={btn.title ?? ''}
+                                placeholder="Ex: ✅ Já estou seguindo"
                                 onChange={(e) => {
                                   const newButtons = currentButtons.map(b => b.id === btn.id ? { ...b, title: e.target.value } : b);
                                   const updatedNodes = currentFlow.nodes.map(n => n.id === selectedNode.id ? { ...n, data: { ...n.data, buttons: newButtons } } : n);
                                   updateFlow(currentFlow.id, { nodes: updatedNodes });
                                 }}
                                 className="w-full px-2 py-1.5 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-semibold"
-                                placeholder="Ex: ✅ Já estou seguindo"
                               />
                               <div>
                                 <label className="text-[10px] text-slate-500 font-medium block mb-1">🔗 Se já seguiu, ir para o bloco:</label>
@@ -1433,7 +1424,8 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
                   </div>
                   <textarea
                     rows={4}
-                    value={selectedNode.data?.text || ''}
+                    value={selectedNode.data?.text ?? ''}
+                    placeholder="Olá {{first_name}}! Como posso te ajudar hoje?"
                     onChange={(e) => {
                       const updatedNodes = currentFlow.nodes.map(n => n.id === selectedNode.id ? {
                         ...n,
@@ -1487,7 +1479,8 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
                         </div>
                         <input
                           type="text"
-                          value={btn.title}
+                          value={btn.title ?? ''}
+                          placeholder="👉 Novo Botão"
                           onChange={(e) => {
                             const newButtons = selectedNode.data.buttons.map(b => b.id === btn.id ? { ...b, title: e.target.value } : b);
                             const updatedNodes = currentFlow.nodes.map(n => n.id === selectedNode.id ? { ...n, data: { ...n.data, buttons: newButtons } } : n);
@@ -1537,7 +1530,8 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
                   </label>
                   <input
                     type="text"
-                    value={selectedNode.data?.keyword || ''}
+                    value={selectedNode.data?.keyword ?? ''}
+                    placeholder="EX: LISTA ou LISTA, QUERO"
                     onChange={(e) => {
                       const updatedNodes = currentFlow.nodes.map(n => n.id === selectedNode.id ? {
                         ...n,
@@ -1545,8 +1539,20 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
                       } : n);
                       updateFlow(currentFlow.id, { nodes: updatedNodes });
                     }}
+                    onBlur={(e) => {
+                      const val = e.target.value.trim();
+                      if (val) {
+                        const cleaned = cleanKeywordString(val);
+                        if (cleaned && cleaned !== selectedNode.data?.keyword) {
+                          const updatedNodes = currentFlow.nodes.map(n => n.id === selectedNode.id ? {
+                            ...n,
+                            data: { ...n.data, keyword: cleaned }
+                          } : n);
+                          updateFlow(currentFlow.id, { nodes: updatedNodes });
+                        }
+                      }
+                    }}
                     className="w-full px-3 py-2 rounded-lg bg-white dark:bg-slate-900 border border-blue-300 dark:border-blue-700 text-xs text-slate-900 dark:text-white font-mono uppercase font-bold focus:ring-2 focus:ring-blue-500 shadow-xs"
-                    placeholder="EX: LISTA ou LISTA, QUERO"
                   />
                   <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1.5 leading-tight">
                     💡 <strong>Dica:</strong> Você pode adicionar mais de uma palavra separada por vírgula (ex: <code>LISTA, QUERO, LINK</code>).

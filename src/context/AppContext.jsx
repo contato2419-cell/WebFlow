@@ -125,18 +125,22 @@ const INITIAL_TRIGGERS = [
 ];
 
 export function cleanKeywordString(kw) {
-  if (!kw) return 'LISTA';
-  const parts = String(kw)
+  if (kw === undefined || kw === null) return 'LISTA';
+  if (typeof kw !== 'string') return String(kw);
+  const trimmed = kw.trim();
+  if (!trimmed) return '';
+  const parts = trimmed
     .split(/[,;|]/)
     .map(k => k.trim().toUpperCase())
     .filter(Boolean);
   const unique = [...new Set(parts)];
-  return unique.length > 0 ? unique.join(', ') : 'LISTA';
+  return unique.join(', ');
 }
 
 export function formatMetaButtonTitle(str) {
-  if (!str) return '✅ Já estou seguindo';
+  if (str === undefined || str === null) return '✅ Já estou seguindo';
   str = String(str).trim();
+  if (!str) return '';
   if (str.length <= 20) return str;
 
   if (/já\s+estou\s+te\s+seguindo/i.test(str)) {
@@ -157,7 +161,7 @@ export function formatMetaButtonTitle(str) {
   if (lastSpace > 8) {
     truncated = truncated.slice(0, lastSpace);
   }
-  return truncated.trim() || 'Já estou seguindo';
+  return truncated.trim() || '';
 }
 
 export const AppProvider = ({ children }) => {
@@ -194,17 +198,19 @@ export const AppProvider = ({ children }) => {
           .filter(n => n.id !== 'node_action_tag' && n.type !== 'action')
           .map(n => {
             if (n.type === 'trigger') {
+              const kw = n.data?.keyword !== undefined ? n.data.keyword : 'LISTA';
+              const cleanKw = cleanKeywordString(kw);
               return {
                 ...n,
                 data: {
                   ...n.data,
-                  keyword: cleanKeywordString(n.data?.keyword || 'LISTA')
+                  keyword: cleanKw !== '' ? cleanKw : (n.data?.keyword ?? 'LISTA')
                 }
               };
             }
             if (n.type === 'follower_gate') {
-              const rawBtn = n.data?.buttons?.[0]?.title || '✅ Já estou seguindo';
-              const cleanBtn = formatMetaButtonTitle(rawBtn);
+              const rawBtn = n.data?.buttons?.[0]?.title !== undefined ? n.data.buttons[0].title : '✅ Já estou seguindo';
+              const cleanBtn = formatMetaButtonTitle(rawBtn) || '✅ Já estou seguindo';
               const btns = (n.data?.buttons || []).map((b, idx) => idx === 0 ? { ...b, title: cleanBtn } : b);
               return {
                 ...n,
