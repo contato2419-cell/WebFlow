@@ -52,15 +52,15 @@ async function getStoredState(env) {
   return null;
 }
 
-// Casamento estrito por palavra inteira (suporta múltiplas palavras separadas por vírgula)
-function matchesKeywordStrict(text, keywordString) {
+// Casamento flexível para palavras-chave (suporta emojis, acentos e pontuação)
+function matchesKeyword(text, keywordString) {
   if (!text || !keywordString) return false;
-  const keywords = String(keywordString).split(/[,;|]/).map(k => k.trim()).filter(Boolean);
-  const lowerText = text.toLowerCase();
+  const keywords = String(keywordString).split(/[,;|]/).map(k => k.trim().toLowerCase()).filter(Boolean);
+  const cleanText = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   return keywords.some(kw => {
-    const cleanKw = kw.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regex = new RegExp(`(?:^|\\s|[.,!?;])${cleanKw}(?:$|\\s|[.,!?;])`, 'i');
-    return regex.test(lowerText);
+    const cleanKw = kw.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(^|[^a-z0-9])${cleanKw}([^a-z0-9]|$)`, 'i');
+    return regex.test(cleanText);
   });
 }
 
@@ -170,9 +170,8 @@ export async function onRequestPost(context) {
             // Ignora comentários feitos pelo próprio dono da conta (@ygorweb)
             if (!username || username.toLowerCase() === 'ygorweb') continue;
 
-            // REGRA DE SEGURANÇA 2: CASAMENTO ESTRITO DE PALAVRA-CHAVE
-            // Só dispara se o comentário contiver a palavra EXATA (ex: "LISTA") e não substrings como "especialista"
-            if (!matchesKeywordStrict(commentText, state.keyword)) {
+            // REGRA DE SEGURANÇA 2: CASAMENTO FLEXÍVEL DE PALAVRA-CHAVE (suporta emojis e pontuações)
+            if (!matchesKeyword(commentText, state.keyword)) {
               continue; // Comentário comum sem a palavra-chave. NÃO FAZ NADA!
             }
 
@@ -210,6 +209,7 @@ export async function onRequestPost(context) {
               }
             };
 
+            let dmSuccess = false;
             try {
               const dmRes = await fetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${PAGE_TOKEN}`, {
                 method: 'POST',
@@ -217,10 +217,11 @@ export async function onRequestPost(context) {
                 body: JSON.stringify(caixinhaPayload)
               });
               const dmJson = await dmRes.json();
-              
-              // Fallback se template genérico não for suportado no direct do usuário
-              if (!dmJson.message_id) {
-                await fetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${PAGE_TOKEN}`, {
+              if (dmJson.message_id) {
+                dmSuccess = true;
+              } else {
+                // Fallback se template genérico não for suportado no direct do usuário
+                const fbRes = await fetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${PAGE_TOKEN}`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
@@ -237,21 +238,25 @@ export async function onRequestPost(context) {
                     }
                   })
                 });
+                const fbJson = await fbRes.json();
+                if (fbJson.message_id) dmSuccess = true;
               }
             } catch (e) {
               console.error('Erro ao enviar DM privada para o comentário:', e);
             }
 
-            // Resposta pública humanizada no comentário
-            try {
-              const replyText = PUBLIC_REPLIES[Math.floor(Math.random() * PUBLIC_REPLIES.length)];
-              await fetch(`https://graph.facebook.com/v21.0/${commentData.id}/replies?access_token=${PAGE_TOKEN}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: replyText })
-              });
-            } catch (e) {
-              console.error('Erro ao enviar resposta pública no comentário:', e);
+            // Resposta pública humanizada no comentário (APENAS se a DM teve sucesso!)
+            if (dmSuccess) {
+              try {
+                const replyText = PUBLIC_REPLIES[Math.floor(Math.random() * PUBLIC_REPLIES.length)];
+                await fetch(`https://graph.facebook.com/v21.0/${commentData.id}/replies?access_token=${PAGE_TOKEN}`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ message: replyText })
+                });
+              } catch (e) {
+                console.error('Erro ao enviar resposta pública no comentário:', e);
+              }
             }
           }
         }
@@ -277,8 +282,8 @@ export async function onRequestPost(context) {
           // Detecta se o usuário clicou no botão "Já estou te seguindo!"
           const isButtonClicked = postbackPayload === 'FOLLOW_CONFIRMED';
 
-          // Detecta se o usuário enviou estritamente a palavra-chave no direct
-          const isExactKeyword = matchesKeywordStrict(rawText, state.keyword);
+          // Detecta se o usuário enviou a palavra-chave no direct
+          const isExactKeyword = matchesKeyword(rawText, state.keyword);
 
           // REGRA DE SEGURANÇA 3: FILTRO ANTI-INTRUSÃO
           // Se NÃO foi clique no botão E NÃO foi a palavra-chave configurada:

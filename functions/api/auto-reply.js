@@ -58,14 +58,14 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function matchesKeywordStrict(text, keywordString) {
+function matchesKeyword(text, keywordString) {
   if (!text || !keywordString) return false;
-  const keywords = String(keywordString).split(/[,;|]/).map(k => k.trim()).filter(Boolean);
-  const lowerText = text.toLowerCase();
+  const keywords = String(keywordString).split(/[,;|]/).map(k => k.trim().toLowerCase()).filter(Boolean);
+  const cleanText = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   return keywords.some(kw => {
-    const cleanKw = kw.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regex = new RegExp(`(?:^|\\s|[.,!?;])${cleanKw}(?:$|\\s|[.,!?;])`, 'i');
-    return regex.test(lowerText);
+    const cleanKw = kw.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(^|[^a-z0-9])${cleanKw}([^a-z0-9]|$)`, 'i');
+    return regex.test(cleanText);
   });
 }
 
@@ -164,144 +164,164 @@ export async function onRequestPost(context) {
     const processed = [];
     const skipped = [];
     let commentsProcessed = 0;
-    const MAX_COMMENTS_PER_RUN = 25; // Processa até 25 leads por ciclo com segurança
+    const MAX_COMMENTS_PER_RUN = 30; // Processa até 30 leads por ciclo para respeitar limites do Cloudflare Worker
+    let hasMorePending = false;
 
     for (const reel of mediaList) {
-      if (commentsProcessed >= MAX_COMMENTS_PER_RUN) break;
+      if (commentsProcessed >= MAX_COMMENTS_PER_RUN) {
+        hasMorePending = true;
+        break;
+      }
 
-      // 3. Busca comentários de cada Reel com verificação de replies de ygorweb (até 100 por reel)
-      const commRes = await fetch(`https://graph.facebook.com/v21.0/${reel.id}/comments?fields=id,text,timestamp,from,username,replies{id,from}&limit=100&access_token=${PAGE_TOKEN}`);
-      const commData = await commRes.json();
-      const comments = commData.data || [];
+      // Varredura paginada: percorre até 25 páginas (~2.500 comentários) por Reel
+      let commentsUrl = `https://graph.facebook.com/v21.0/${reel.id}/comments?fields=id,text,timestamp,from,username,replies{id,from}&limit=100&access_token=${PAGE_TOKEN}`;
+      let pageCount = 0;
+      const MAX_PAGES_PER_REEL = 25;
 
-      for (const comment of comments) {
-        if (commentsProcessed >= MAX_COMMENTS_PER_RUN) break;
+      while (commentsUrl && pageCount < MAX_PAGES_PER_REEL && commentsProcessed < MAX_COMMENTS_PER_RUN) {
+        pageCount++;
+        const commRes = await fetch(commentsUrl);
+        const commData = await commRes.json();
+        const comments = commData.data || [];
 
-        const text = (comment.text || '').trim();
-        const user = (comment.username || comment.from?.username || '').toLowerCase();
+        if (comments.length === 0) break;
 
-        if (!user || user === 'ygorweb') continue;
-
-        // REGRA DE SEGURANÇA: Casamento estrito por palavra inteira (ex: "Lista")
-        if (matchesKeywordStrict(text, keyword)) {
-          const replies = comment.replies?.data || [];
-          const alreadyHasYgorReply = replies.some(r => r.from?.username === 'ygorweb');
-
-          // REGRA DE OURO 1: ANTI-DUPLICAÇÃO ABSOLUTA
-          if (alreadyHasYgorReply) {
-            skipped.push({ commentId: comment.id, reelId: reel.id, user, reason: 'already_has_public_reply' });
-            continue;
+        for (const comment of comments) {
+          if (commentsProcessed >= MAX_COMMENTS_PER_RUN) {
+            hasMorePending = true;
+            break;
           }
 
-          // REGRA DE OURO 2: DELAY HUMANO ANTI-BAN
-          const commentAgeSeconds = (Date.now() - new Date(comment.timestamp).getTime()) / 1000;
-          const targetDelay = baseDelaySeconds + Math.floor(Math.random() * jitterSeconds);
+          const text = (comment.text || '').trim();
+          const user = (comment.username || comment.from?.username || '').toLowerCase();
 
-          if (commentAgeSeconds < targetDelay) {
-            skipped.push({ 
-              commentId: comment.id, 
-              reelId: reel.id,
-              user, 
-              ageSeconds: Math.round(commentAgeSeconds), 
-              targetDelay, 
-              reason: 'waiting_human_delay' 
-            });
-            continue; // Deixa para responder quando o delay for atingido!
-          }
+          if (!user || user === 'ygorweb') continue;
 
-          let dmStatus = 'skipped';
+          // REGRA DE SEGURANÇA: Casamento flexível para palavra-chave (suporta emojis, pontuações e acentos)
+          if (matchesKeyword(text, keyword)) {
+            const replies = comment.replies?.data || [];
+            const alreadyHasYgorReply = replies.some(r => r.from?.username === 'ygorweb');
 
-          // 1ª DM: Envia a Caixinha Interativa (Generic Template) com o botão nativo da Meta
-          const caixinhaPayload = {
-            recipient: { comment_id: comment.id },
-            message: {
-              attachment: {
-                type: "template",
-                payload: {
-                  template_type: "generic",
-                  elements: [
-                    {
-                      title: firstDmTitle,
-                      subtitle: firstDmSubtitle,
-                      buttons: [
+            // REGRA DE OURO 1: ANTI-DUPLICAÇÃO ABSOLUTA
+            if (alreadyHasYgorReply) {
+              skipped.push({ commentId: comment.id, reelId: reel.id, user, reason: 'already_has_public_reply' });
+              continue;
+            }
+
+            // REGRA DE OURO 2: DELAY HUMANO ANTI-BAN
+            const commentAgeSeconds = (Date.now() - new Date(comment.timestamp).getTime()) / 1000;
+            const targetDelay = baseDelaySeconds + Math.floor(Math.random() * jitterSeconds);
+
+            if (commentAgeSeconds < targetDelay) {
+              skipped.push({ 
+                commentId: comment.id, 
+                reelId: reel.id,
+                user, 
+                ageSeconds: Math.round(commentAgeSeconds), 
+                targetDelay, 
+                reason: 'waiting_human_delay' 
+              });
+              continue; // Deixa para responder quando o delay for atingido!
+            }
+
+            let dmStatus = 'skipped';
+
+            // 1ª DM: Envia a Caixinha Interativa (Generic Template) com o botão nativo da Meta
+            const caixinhaPayload = {
+              recipient: { comment_id: comment.id },
+              message: {
+                attachment: {
+                  type: "template",
+                  payload: {
+                    template_type: "generic",
+                    elements: [
+                      {
+                        title: firstDmTitle,
+                        subtitle: firstDmSubtitle,
+                        buttons: [
+                          {
+                            type: "postback",
+                            title: buttonText,
+                            payload: "FOLLOW_CONFIRMED"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              }
+            };
+
+            try {
+              const dmRes = await fetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${PAGE_TOKEN}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(caixinhaPayload)
+              });
+              const dmJson = await dmRes.json();
+              if (dmJson.message_id) {
+                dmStatus = 'success_interactive_card';
+              } else {
+                // Fallback de texto com Quick Reply ou texto direto
+                const fallbackRes = await fetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${PAGE_TOKEN}`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    recipient: { comment_id: comment.id },
+                    message: {
+                      text: firstDmTitle ? `${firstDmTitle}\n\n${firstDmText}` : firstDmText,
+                      quick_replies: [
                         {
-                          type: "postback",
+                          content_type: "text",
                           title: buttonText,
                           payload: "FOLLOW_CONFIRMED"
                         }
                       ]
                     }
-                  ]
-                }
+                  })
+                });
+                const fallbackJson = await fallbackRes.json();
+                dmStatus = fallbackJson.message_id ? 'success_quick_reply' : 'failed';
+              }
+            } catch (e) {
+              dmStatus = 'error_network';
+            }
+
+            // Intervalo humano seguro entre a DM e o comentário público
+            await sleep(400);
+
+            // Resposta pública humanizada no comentário do Reels (APENAS se a DM teve sucesso!)
+            let pubStatus = 'skipped';
+            if (dmStatus === 'success_interactive_card' || dmStatus === 'success_quick_reply') {
+              try {
+                const replyText = PUBLIC_REPLIES[Math.floor(Math.random() * PUBLIC_REPLIES.length)];
+                const pubRes = await fetch(`https://graph.facebook.com/v21.0/${comment.id}/replies?access_token=${PAGE_TOKEN}`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ message: replyText })
+                });
+                const pubJson = await pubRes.json();
+                if (pubJson.id) pubStatus = 'success';
+              } catch (e) {
+                pubStatus = 'error';
               }
             }
-          };
 
-          try {
-            const dmRes = await fetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${PAGE_TOKEN}`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(caixinhaPayload)
+            processed.push({
+              commentId: comment.id,
+              reelId: reel.id,
+              user,
+              text,
+              dmStatus,
+              pubStatus
             });
-            const dmJson = await dmRes.json();
-            if (dmJson.message_id) {
-              dmStatus = 'success_interactive_card';
-            } else {
-              // Fallback de texto com Quick Reply ou texto direto
-              const fallbackRes = await fetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${PAGE_TOKEN}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  recipient: { comment_id: comment.id },
-                  message: {
-                    text: firstDmTitle ? `${firstDmTitle}\n\n${firstDmText}` : firstDmText,
-                    quick_replies: [
-                      {
-                        content_type: "text",
-                        title: buttonText,
-                        payload: "FOLLOW_CONFIRMED"
-                      }
-                    ]
-                  }
-                })
-              });
-              const fallbackJson = await fallbackRes.json();
-              dmStatus = fallbackJson.message_id ? 'success_quick_reply' : 'failed';
-            }
-          } catch (e) {
-            dmStatus = 'error_network';
+
+            commentsProcessed++;
+            await sleep(500); // Espaçamento suave anti-ban entre envios
           }
-
-          // Intervalo humano seguro entre a DM e o comentário público
-          await sleep(600);
-
-          // Resposta pública humanizada no comentário do Reels
-          let pubStatus = 'skipped';
-          try {
-            const replyText = PUBLIC_REPLIES[Math.floor(Math.random() * PUBLIC_REPLIES.length)];
-            const pubRes = await fetch(`https://graph.facebook.com/v21.0/${comment.id}/replies?access_token=${PAGE_TOKEN}`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ message: replyText })
-            });
-            const pubJson = await pubRes.json();
-            if (pubJson.id) pubStatus = 'success';
-          } catch (e) {
-            pubStatus = 'error';
-          }
-
-          processed.push({
-            commentId: comment.id,
-            reelId: reel.id,
-            user,
-            text,
-            dmStatus,
-            pubStatus
-          });
-
-          commentsProcessed++;
-          await sleep(600); // Espaçamento suave entre leads
         }
+
+        commentsUrl = commData.paging?.next || null;
       }
     }
 
@@ -309,6 +329,7 @@ export async function onRequestPost(context) {
       success: true,
       mediaCount: mediaList.length,
       processedCount: processed.length,
+      hasMore: hasMorePending,
       processed,
       skipped
     }), {

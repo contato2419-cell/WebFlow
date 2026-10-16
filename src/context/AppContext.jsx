@@ -743,6 +743,13 @@ export const AppProvider = ({ children }) => {
             ...f,
             stats: { ...f.stats, sent: (f.stats?.sent || 0) + data.processedCount }
           } : f));
+
+          // Se ainda há comentários pendentes na fila, processa o próximo lote automaticamente
+          if (data.hasMore) {
+            setTimeout(() => {
+              processLiveAutomation();
+            }, 5000);
+          }
         } else if (data.skipped?.length > 0 && data.skipped.some(s => s.reason === 'waiting_human_delay')) {
           setAutomationStatus('⏳ Aguardando delay humano anti-ban para novos comentários...');
         } else {
