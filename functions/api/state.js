@@ -82,7 +82,14 @@ export async function onRequestGet(context) {
 
   try {
     const stored = await getStoredState(env);
-    const state = stored ? { ...DEFAULT_STATE, ...stored } : DEFAULT_STATE;
+    const rawState = stored ? { ...DEFAULT_STATE, ...stored } : DEFAULT_STATE;
+    let cleanKeyword = rawState.keyword;
+    if (cleanKeyword) {
+      const parts = String(cleanKeyword).split(/[,;|]/).map(k => k.trim().toUpperCase()).filter(Boolean);
+      const unique = [...new Set(parts)];
+      cleanKeyword = unique.length > 0 ? unique.join(', ') : 'LISTA';
+    }
+    const state = { ...rawState, keyword: cleanKeyword };
 
     return new Response(JSON.stringify({ success: true, state }), {
       status: 200,
