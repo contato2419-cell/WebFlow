@@ -419,9 +419,10 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
           theme === 'dark' ? 'canvas-grid-dark' : 'canvas-grid-light'
         }`}
       >
-        {/* Barra Superior Flutuante Estilo ManyChat: Seletor de Fluxos com Dropdown & Status */}
-        <div className="absolute top-3 sm:top-5 left-3 sm:left-6 right-3 sm:right-auto z-30 flex flex-col gap-2 max-w-full">
-          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+        {/* Barra Superior Flutuante: Seletor de Fluxos e Ações Principais (Organizado em 2 Lados) */}
+        <header className="absolute top-3 sm:top-4 inset-x-3 sm:inset-x-6 z-30 flex items-center justify-between gap-3 pointer-events-none">
+          {/* Lado Esquerdo: Fluxo Atual, Nova Automação e Switch de Ligado/Desligado */}
+          <div className="flex items-center gap-2 flex-wrap pointer-events-auto">
             {/* Seletor de Fluxos Interativo */}
             <div className="relative" ref={dropdownRef}>
               <button
@@ -582,7 +583,7 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
               className="px-2.5 sm:px-3.5 py-2 sm:py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white flex items-center gap-1.5 shadow-sm transition-all border border-blue-500 shrink-0 cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">+ Nova Automação</span>
+              <span className="hidden sm:inline">Nova Automação</span>
             </button>
 
             {/* Botão de Ligar / Desligar Automação */}
@@ -598,7 +599,10 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
               <span className="hidden sm:inline">{currentFlow.active ? '🟢 Automação Ligada' : '⚪ Automação Desligada'}</span>
               <span className="sm:hidden">{currentFlow.active ? '🟢 Ligada' : '⚪ Desligada'}</span>
             </button>
+          </div>
 
+          {/* Lado Direito: Ações Globais (Disparar, Salvar, Simulador) */}
+          <div className="flex items-center gap-2 pointer-events-auto shrink-0">
             {/* Disparo em Tempo Real / Forçar Verificação */}
             <button
               onClick={() => {
@@ -617,105 +621,111 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
               title={currentFlow.channel === 'whatsapp' ? 'Verificar mensagens do WhatsApp' : 'Verificar comentários recentes no Reel e enviar DMs agora'}
             >
               <Zap className={`w-3.5 h-3.5 ${isRunningAutomation ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">{isRunningAutomation ? 'Enviando DMs...' : '⚡ Disparar Agora'}</span>
-              <span className="sm:hidden">{isRunningAutomation ? 'Enviando...' : '⚡ Disparar'}</span>
+              <span className="hidden md:inline">{isRunningAutomation ? 'Enviando DMs...' : '⚡ Disparar Agora'}</span>
+              <span className="md:hidden">⚡ Disparar</span>
             </button>
-
-            {automationStatus && (
-              <span className="text-[10px] sm:text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl animate-in fade-in truncate max-w-[150px] sm:max-w-none">
-                {automationStatus}
-              </span>
-            )}
 
             {/* Botão de Salvar Fluxo na Nuvem */}
             <button
               onClick={() => saveFlowsToCloud(flows)}
-              className="px-2.5 sm:px-3.5 py-2 sm:py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm border bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 shrink-0"
-              title="Salvar alterações na nuvem e sincronizar mensagens de DMs"
+              className="px-2.5 sm:px-3.5 py-2 sm:py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm border bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 shrink-0 cursor-pointer"
+              title="Salvar alterações na nuvem"
             >
               <Save className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Salvar Fluxo</span>
+              <span className="hidden md:inline">Salvar Fluxo</span>
             </button>
 
-            {saveStatus && (
-              <span className="text-[10px] sm:text-[11px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200 dark:border-indigo-800 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl animate-in fade-in truncate">
-                {saveStatus}
-              </span>
-            )}
-
+            {/* Testar no Simulador */}
             <button
               onClick={onOpenSimulator}
-              className="hidden sm:flex bg-blue-600 hover:bg-blue-700 px-3.5 py-2 sm:py-2.5 rounded-xl text-xs font-bold text-white items-center gap-2 shadow-sm transition-all shrink-0"
+              className="hidden sm:flex bg-blue-600 hover:bg-blue-700 px-3.5 py-2 sm:py-2.5 rounded-xl text-xs font-bold text-white items-center gap-2 shadow-sm transition-all shrink-0 cursor-pointer"
             >
               <Play className="w-3.5 h-3.5 fill-white text-white" />
               <span>Testar no Simulador</span>
             </button>
           </div>
+        </header>
 
-          {/* Banner de Aviso caso o WhatsApp esteja desconectado */}
-          {currentFlow.channel === 'whatsapp' && !channels.whatsapp?.connected && (
-            <div className="bg-amber-50/90 dark:bg-amber-950/80 border border-amber-200 dark:border-amber-800/80 px-3 sm:px-4 py-2 rounded-xl flex items-center justify-between gap-2 sm:gap-3 text-xs text-amber-800 dark:text-amber-200 shadow-md backdrop-blur-xs animate-in fade-in">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-                <span className="text-[11px] sm:text-xs">
-                  <strong>WhatsApp Desconectado:</strong> Conecte na aba Canais para disparar automações no WhatsApp.
-                </span>
-              </div>
-              <button
-                onClick={() => setCurrentView('channels')}
-                className="px-2 sm:px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-[10px] sm:text-[11px] shrink-0 transition-colors"
-              >
-                Conectar
-              </button>
+        {/* Status Flutuante Centralizado (Toast Não-Intrusivo que NUNCA sobrepõe botões) */}
+        {(automationStatus || saveStatus) && (
+          <div className="absolute top-16 sm:top-20 left-1/2 -translate-x-1/2 z-30 pointer-events-none flex flex-col items-center gap-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
+            {automationStatus && (
+              <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-white/95 dark:bg-slate-900/95 border border-emerald-300 dark:border-emerald-700/80 px-3.5 py-1.5 rounded-full shadow-lg backdrop-blur-md flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                {automationStatus}
+              </span>
+            )}
+            {saveStatus && (
+              <span className="text-xs font-bold text-indigo-700 dark:text-indigo-300 bg-white/95 dark:bg-slate-900/95 border border-indigo-300 dark:border-indigo-700/80 px-3.5 py-1.5 rounded-full shadow-lg backdrop-blur-md">
+                {saveStatus}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Banner de Aviso caso o WhatsApp esteja desconectado */}
+        {currentFlow.channel === 'whatsapp' && !channels.whatsapp?.connected && (
+          <div className="absolute top-16 sm:top-20 left-6 right-6 z-20 bg-amber-50/90 dark:bg-amber-950/80 border border-amber-200 dark:border-amber-800/80 px-3 sm:px-4 py-2 rounded-xl flex items-center justify-between gap-2 sm:gap-3 text-xs text-amber-800 dark:text-amber-200 shadow-md backdrop-blur-xs animate-in fade-in">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+              <span className="text-[11px] sm:text-xs">
+                <strong>WhatsApp Desconectado:</strong> Conecte na aba Canais para disparar automações no WhatsApp.
+              </span>
             </div>
-          )}
-        </div>
+            <button
+              onClick={() => setCurrentView('channels')}
+              className="px-2 sm:px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-[10px] sm:text-[11px] shrink-0 transition-colors"
+            >
+              Conectar
+            </button>
+          </div>
+        )}
 
-        {/* Toolbar de Inserção de Blocos (Padrão ManyChat Responsivo) */}
-        <div className="absolute bottom-16 sm:bottom-6 left-1/2 -translate-x-1/2 md:translate-x-0 md:left-auto md:top-5 md:right-6 md:bottom-auto z-20 flex items-center gap-1 sm:gap-1.5 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-800 p-1 sm:p-1.5 rounded-2xl shadow-lg max-w-[95vw] overflow-x-auto scrollbar-none">
+        {/* Toolbar de Inserção de Blocos - Dock Fixo no Centro Inferior (Padrão Figma/ManyChat) */}
+        <div className="fixed sm:absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 sm:gap-2 bg-slate-900/95 dark:bg-slate-900/95 text-white backdrop-blur-md border border-slate-700/80 p-1.5 rounded-2xl shadow-2xl max-w-[95vw] overflow-x-auto scrollbar-none">
           <button
             onClick={() => handleAddNode('trigger')}
             title="Adicionar Gatilho de Comentário (Palavra-Chave)"
-            className="px-2.5 sm:px-3.5 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-100 dark:hover:bg-amber-900 border border-amber-300 dark:border-amber-700 flex items-center gap-1 sm:gap-1.5 transition-colors whitespace-nowrap shadow-xs"
+            className="px-3 py-2 rounded-xl text-xs font-bold text-amber-300 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer"
           >
-            <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+            <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
             <span>+ Gatilho</span>
           </button>
 
           <button
             onClick={() => handleAddNode('message')}
             title="Adicionar Mensagem"
-            className="px-2.5 sm:px-3.5 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1 sm:gap-1.5 transition-colors whitespace-nowrap"
+            className="px-3 py-2 rounded-xl text-xs font-semibold text-slate-200 hover:bg-slate-800 flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer"
           >
-            <MessageSquare className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+            <MessageSquare className="w-3.5 h-3.5 text-blue-400 shrink-0" />
             <span>+ Mensagem</span>
           </button>
 
           <button
             onClick={() => handleAddNode('action')}
-            title="Adicionar Ação"
-            className="px-2.5 sm:px-3.5 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1 sm:gap-1.5 transition-colors whitespace-nowrap"
+            title="Adicionar Ação (+Tag)"
+            className="px-3 py-2 rounded-xl text-xs font-semibold text-slate-200 hover:bg-slate-800 flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer"
           >
-            <Zap className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-            <span>Ação</span>
+            <Zap className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span>+ Ação</span>
           </button>
 
           <button
             onClick={() => handleAddNode('condition')}
             title="Adicionar Condição"
-            className="px-2.5 sm:px-3.5 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1 sm:gap-1.5 transition-colors whitespace-nowrap"
+            className="px-3 py-2 rounded-xl text-xs font-semibold text-slate-200 hover:bg-slate-800 flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer"
           >
-            <GitBranch className="w-3.5 h-3.5 text-cyan-600 shrink-0" />
-            <span>Condição</span>
+            <GitBranch className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+            <span>+ Condição</span>
           </button>
 
           <button
             onClick={() => handleAddNode('delay')}
             title="Adicionar Smart Delay"
-            className="px-2.5 sm:px-3.5 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1 sm:gap-1.5 transition-colors whitespace-nowrap"
+            className="px-3 py-2 rounded-xl text-xs font-semibold text-slate-200 hover:bg-slate-800 flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer"
           >
-            <Clock className="w-3.5 h-3.5 text-purple-600 shrink-0" />
-            <span>Smart Delay</span>
+            <Clock className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+            <span>+ Delay</span>
           </button>
         </div>
 
