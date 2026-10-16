@@ -267,24 +267,6 @@ export const LiveChatView = () => {
     }
   };
 
-  // Alterar foto personalizada do contato
-  const handleUpdateAvatar = () => {
-    if (!activeConv) return;
-    const cleanHandle = activeConv.handle.replace(/^@/, '').trim();
-    const url = window.prompt(`Cole a URL da foto de perfil real para ${activeConv.handle}:`, activeConv.avatar || '');
-    if (url !== null) {
-      const cleanUrl = url.trim() || null;
-      if (cleanUrl) {
-        localStorage.setItem('user_avatar_' + cleanHandle, cleanUrl);
-      } else {
-        localStorage.removeItem('user_avatar_' + cleanHandle);
-      }
-      if (updateContactAvatar) {
-        updateContactAvatar(activeConv.id, cleanUrl);
-      }
-    }
-  };
-
   return (
     <div className="h-[calc(100vh-4rem-3.5rem)] md:h-[calc(100vh-4rem)] flex overflow-hidden animate-in fade-in duration-300">
       {/* Coluna Esquerda: Lista de Conversas Ao Vivo (Estilo Meta Business Suite) */}
@@ -538,13 +520,6 @@ export const LiveChatView = () => {
                   >
                     <ExternalLink className="w-2.5 h-2.5" /> Ver Perfil
                   </a>
-                  <button 
-                    onClick={handleUpdateAvatar}
-                    className="text-slate-500 hover:text-blue-600 flex items-center gap-0.5 text-[10px] font-semibold shrink-0"
-                    title="Adicionar ou alterar foto de perfil deste seguidor"
-                  >
-                    <Camera className="w-2.5 h-2.5" /> Foto
-                  </button>
                 </div>
               </div>
             </div>

@@ -64,10 +64,6 @@ export const UserAvatar = ({
   const resolvedPhoto = useMemo(() => {
     if (isOwner) return '/avatar_ygorweb.jpg';
     if (isVitrix) return '/logo.jpg';
-    try {
-      const customSaved = localStorage.getItem('user_avatar_' + cleanHandle);
-      if (customSaved) return customSaved;
-    } catch (e) {}
     if (avatar && !imgError) return avatar;
     return getDeterministicAvatar(cleanHandle);
   }, [cleanHandle, isOwner, isVitrix, avatar, imgError]);
