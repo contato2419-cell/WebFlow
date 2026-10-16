@@ -10,8 +10,9 @@ const DEFAULT_STATE = {
   keyword: 'LISTA',
   delaySeconds: 15,
   antiBanJitter: 8,
-  firstDmTitle: 'Me segue ai pra min te enviar ingrato(a) 🚀',
-  firstDmSubtitle: 'Tô postando vídeo assim toda semana! Clica no botão abaixo pra liberar seu link 👇',
+  firstDmTitle: 'Só libera se seguir @ygorweb 🔒',
+  firstDmSubtitle: 'So me seguir e apertar no botão pra min não tomar ban, Tô postando vídeo assim toda semana 🚀',
+  firstDmText: 'So me seguir e apertar no botão pra min não tomar ban, Tô postando vídeo assim toda semana 🚀',
   buttonText: '✅ Já estou te seguindo!',
   finalLinkMessage: `Tá na mão🚀 \nhttps://x.com/Ithielix/status/2109527114760208745\n\nLink do melhor mousepad de 2026 🏆\nhttps://vt.tiktok.com/ZS9UR1CkPgovL-hgiWV/`,
   travaReminder: `Opa! Vi aqui que você ainda não começou a me seguir 👀\n\nDá um pulinho lá no perfil @ygorweb rapidinho, clica em Seguir e aperta no botão de novo que eu já te libero na hora!`

@@ -42,7 +42,9 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
     theme, 
     processLiveAutomation, 
     isRunningAutomation, 
-    automationStatus 
+    automationStatus,
+    saveFlowsToCloud,
+    saveStatus 
   } = useApp();
   const currentFlow = flows.find(f => f.id === selectedFlowId) || flows[0];
 
@@ -608,6 +610,22 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
               </span>
             )}
 
+            {/* Botão de Salvar Fluxo na Nuvem */}
+            <button
+              onClick={() => saveFlowsToCloud(flows)}
+              className="px-2.5 sm:px-3.5 py-2 sm:py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm border bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 shrink-0"
+              title="Salvar alterações na nuvem e sincronizar mensagens de DMs"
+            >
+              <Save className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Salvar Fluxo</span>
+            </button>
+
+            {saveStatus && (
+              <span className="text-[10px] sm:text-[11px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200 dark:border-indigo-800 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl animate-in fade-in truncate">
+                {saveStatus}
+              </span>
+            )}
+
             <button
               onClick={onOpenSimulator}
               className="hidden sm:flex bg-blue-600 hover:bg-blue-700 px-3.5 py-2 sm:py-2.5 rounded-xl text-xs font-bold text-white items-center gap-2 shadow-sm transition-all shrink-0"
@@ -869,10 +887,10 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
                     <div className="space-y-2">
                       <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 text-[10px] text-indigo-700 dark:text-indigo-300 font-bold">
                         <UserCheck className="w-3 h-3 text-indigo-600" />
-                        <span>🔒 Só libera se seguir @ygorweb</span>
+                        <span>{node.data?.title || '🔒 Só libera se seguir @ygorweb'}</span>
                       </div>
                       <p className="text-[11px] text-slate-600 dark:text-slate-300 line-clamp-3 bg-slate-50 dark:bg-slate-800/80 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 leading-relaxed whitespace-pre-line">
-                        {node.data?.text || 'Sem texto'}
+                        {node.data?.text || node.data?.subtitle || 'Sem texto'}
                       </p>
 
                       {node.data?.buttons && node.data.buttons.length > 0 && (
@@ -1028,15 +1046,35 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
 
                 <div>
                   <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    Mensagem de Convite para Seguir
+                    Título / Destaque do Card (DM)
                   </label>
-                  <textarea
-                    rows={4}
-                    value={selectedNode.data?.text || ''}
+                  <input
+                    type="text"
+                    value={selectedNode.data?.title || 'Só libera se seguir @ygorweb 🔒'}
                     onChange={(e) => {
                       const updatedNodes = currentFlow.nodes.map(n => n.id === selectedNode.id ? {
                         ...n,
-                        data: { ...n.data, text: e.target.value }
+                        data: { ...n.data, title: e.target.value }
+                      } : n);
+                      updateFlow(currentFlow.id, { nodes: updatedNodes });
+                    }}
+                    className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-semibold"
+                    placeholder="Ex: Só libera se seguir @ygorweb 🔒"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                    Mensagem de Convite para Seguir (Texto da DM)
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={selectedNode.data?.text || selectedNode.data?.subtitle || ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const updatedNodes = currentFlow.nodes.map(n => n.id === selectedNode.id ? {
+                        ...n,
+                        data: { ...n.data, text: val, subtitle: val }
                       } : n);
                       updateFlow(currentFlow.id, { nodes: updatedNodes });
                     }}
@@ -1287,6 +1325,23 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
                   </div>
                 );
               })()}
+            </div>
+
+            {/* Botão de Salvar Alterações na Nuvem */}
+            <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => saveFlowsToCloud(flows)}
+                className="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition-all active:scale-[0.98]"
+              >
+                <Save className="w-4 h-4" />
+                <span>Salvar Configurações na Nuvem</span>
+              </button>
+              {saveStatus && (
+                <p className="text-center text-[11px] font-bold text-indigo-600 dark:text-indigo-400 mt-2 animate-in fade-in">
+                  {saveStatus}
+                </p>
+              )}
             </div>
           </div>
         </aside>

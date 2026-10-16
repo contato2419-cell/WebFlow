@@ -20,8 +20,9 @@ const DEFAULT_STATE = {
   keyword: 'LISTA',
   delaySeconds: 15,
   antiBanJitter: 8,
-  firstDmTitle: 'Me segue ai pra min te enviar ingrato(a) 🚀',
-  firstDmSubtitle: 'Tô postando vídeo assim toda semana! Clica no botão abaixo pra liberar seu link 👇',
+  firstDmTitle: 'Só libera se seguir @ygorweb 🔒',
+  firstDmSubtitle: 'So me seguir e apertar no botão pra min não tomar ban, Tô postando vídeo assim toda semana 🚀',
+  firstDmText: 'So me seguir e apertar no botão pra min não tomar ban, Tô postando vídeo assim toda semana 🚀',
   buttonText: '✅ Já estou te seguindo!',
   finalLinkMessage: `Tá na mão🚀 \nhttps://x.com/Ithielix/status/2109527114760208745\n\nLink do melhor mousepad de 2026 🏆\nhttps://vt.tiktok.com/ZS9UR1CkPgovL-hgiWV/`
 };
@@ -90,165 +91,172 @@ export async function onRequestPost(context) {
     const keyword = (body.keyword || state.keyword || 'LISTA').trim().toLowerCase();
     const baseDelaySeconds = Number(body.delaySeconds || state.delaySeconds) || 15;
     const jitterSeconds = Number(body.antiBanJitter || state.antiBanJitter) || 8;
-    const firstDmTitle = body.firstDmTitle || state.firstDmTitle || 'Me segue ai pra min te enviar ingrato(a) 🚀';
-    const firstDmSubtitle = body.firstDmSubtitle || state.firstDmSubtitle || 'Tô postando vídeo assim toda semana! Clica no botão abaixo pra liberar seu link 👇';
-    const buttonText = body.buttonText || state.buttonText || '✅ Já estou te seguindo!';
-
-    // 2. Busca o Reel mais recente
-    const mediaRes = await fetch(`https://graph.facebook.com/v21.0/${IG_USER_ID}/media?fields=id,caption&limit=1&access_token=${PAGE_TOKEN}`);
-    const mediaData = await mediaRes.json();
     
-    if (!mediaData.data || mediaData.data.length === 0) {
+    // Suporte prioritário aos textos configurados pelo usuário nas caixinhas do Flow
+    const firstDmText = body.firstDmText || body.firstDmSubtitle || state.firstDmSubtitle || state.firstDmText || 'So me seguir e apertar no botão pra min não tomar ban, Tô postando vídeo assim toda semana 🚀';
+    const firstDmTitle = (body.firstDmTitle || state.firstDmTitle || 'Só libera se seguir @ygorweb 🔒').slice(0, 80);
+    const firstDmSubtitle = firstDmText.slice(0, 80);
+    const buttonText = (body.buttonText || state.buttonText || '✅ Já estou te seguindo!').slice(0, 20);
+
+    // 2. Busca os Reels mais recentes (até 8 mídias) para varredura completa
+    const mediaRes = await fetch(`https://graph.facebook.com/v21.0/${IG_USER_ID}/media?fields=id,caption,media_type,timestamp&limit=8&access_token=${PAGE_TOKEN}`);
+    const mediaData = await mediaRes.json();
+    const mediaList = mediaData.data || [];
+    
+    if (mediaList.length === 0) {
       return new Response(JSON.stringify({ success: false, message: 'Nenhuma mídia encontrada na conta' }), {
         status: 200,
         headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
       });
     }
 
-    const reel = mediaData.data[0];
-
-    // 3. Busca comentários com o campo de replies para BLOQUEAR QUALQUER RESPOSTA DUPLICADA
-    const commRes = await fetch(`https://graph.facebook.com/v21.0/${reel.id}/comments?fields=id,text,timestamp,from,username,replies{id,from}&limit=15&access_token=${PAGE_TOKEN}`);
-    const commData = await commRes.json();
-    const comments = commData.data || [];
-
     const processed = [];
     const skipped = [];
     let commentsProcessed = 0;
+    const MAX_COMMENTS_PER_RUN = 8; // Processa até 8 leads por ciclo com segurança
 
-    for (const comment of comments) {
-      if (commentsProcessed >= 2) break; // Máximo de 2 comentários por ciclo para evitar qualquer risco com a Meta
+    for (const reel of mediaList) {
+      if (commentsProcessed >= MAX_COMMENTS_PER_RUN) break;
 
-      const text = (comment.text || '').trim();
-      const user = (comment.username || comment.from?.username || '').toLowerCase();
+      // 3. Busca comentários de cada Reel com verificação de replies de ygorweb
+      const commRes = await fetch(`https://graph.facebook.com/v21.0/${reel.id}/comments?fields=id,text,timestamp,from,username,replies{id,from}&limit=25&access_token=${PAGE_TOKEN}`);
+      const commData = await commRes.json();
+      const comments = commData.data || [];
 
-      if (!user || user === 'ygorweb') continue;
+      for (const comment of comments) {
+        if (commentsProcessed >= MAX_COMMENTS_PER_RUN) break;
 
-      // REGRA DE SEGURANÇA: Casamento estrito por palavra inteira
-      if (matchesKeywordStrict(text, keyword)) {
-        const replies = comment.replies?.data || [];
-        const alreadyHasYgorReply = replies.some(r => r.from?.username === 'ygorweb');
+        const text = (comment.text || '').trim();
+        const user = (comment.username || comment.from?.username || '').toLowerCase();
 
-        // REGRA DE OURO 1: ANTI-DUPLICAÇÃO ABSOLUTA
-        // Se a conta ygorweb já respondeu este comentário, PULA IMEDIATAMENTE!
-        if (alreadyHasYgorReply) {
-          skipped.push({ commentId: comment.id, user, reason: 'already_has_public_reply' });
-          continue;
-        }
+        if (!user || user === 'ygorweb') continue;
 
-        // REGRA DE OURO 2: DELAY HUMANO ANTI-BAN
-        // Calcula a idade do comentário em segundos. Se for mais novo que o delay configurado, NÃO RESPONDE AINDA!
-        const commentAgeSeconds = (Date.now() - new Date(comment.timestamp).getTime()) / 1000;
-        const targetDelay = baseDelaySeconds + Math.floor(Math.random() * jitterSeconds);
+        // REGRA DE SEGURANÇA: Casamento estrito por palavra inteira (ex: "Lista")
+        if (matchesKeywordStrict(text, keyword)) {
+          const replies = comment.replies?.data || [];
+          const alreadyHasYgorReply = replies.some(r => r.from?.username === 'ygorweb');
 
-        if (commentAgeSeconds < targetDelay) {
-          skipped.push({ 
-            commentId: comment.id, 
-            user, 
-            ageSeconds: Math.round(commentAgeSeconds), 
-            targetDelay, 
-            reason: 'waiting_human_delay' 
-          });
-          continue; // Deixa para responder no próximo ciclo quando o delay for atingido!
-        }
+          // REGRA DE OURO 1: ANTI-DUPLICAÇÃO ABSOLUTA
+          if (alreadyHasYgorReply) {
+            skipped.push({ commentId: comment.id, reelId: reel.id, user, reason: 'already_has_public_reply' });
+            continue;
+          }
 
-        let dmStatus = 'skipped';
+          // REGRA DE OURO 2: DELAY HUMANO ANTI-BAN
+          const commentAgeSeconds = (Date.now() - new Date(comment.timestamp).getTime()) / 1000;
+          const targetDelay = baseDelaySeconds + Math.floor(Math.random() * jitterSeconds);
 
-        // 1ª DM: Envia a Caixinha Interativa (Generic Template) com o botão nativo da Meta
-        const caixinhaPayload = {
-          recipient: { comment_id: comment.id },
-          message: {
-            attachment: {
-              type: "template",
-              payload: {
-                template_type: "generic",
-                elements: [
-                  {
-                    title: firstDmTitle,
-                    subtitle: firstDmSubtitle,
-                    buttons: [
+          if (commentAgeSeconds < targetDelay) {
+            skipped.push({ 
+              commentId: comment.id, 
+              reelId: reel.id,
+              user, 
+              ageSeconds: Math.round(commentAgeSeconds), 
+              targetDelay, 
+              reason: 'waiting_human_delay' 
+            });
+            continue; // Deixa para responder quando o delay for atingido!
+          }
+
+          let dmStatus = 'skipped';
+
+          // 1ª DM: Envia a Caixinha Interativa (Generic Template) com o botão nativo da Meta
+          const caixinhaPayload = {
+            recipient: { comment_id: comment.id },
+            message: {
+              attachment: {
+                type: "template",
+                payload: {
+                  template_type: "generic",
+                  elements: [
+                    {
+                      title: firstDmTitle,
+                      subtitle: firstDmSubtitle,
+                      buttons: [
+                        {
+                          type: "postback",
+                          title: buttonText,
+                          payload: "FOLLOW_CONFIRMED"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          };
+
+          try {
+            const dmRes = await fetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${PAGE_TOKEN}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(caixinhaPayload)
+            });
+            const dmJson = await dmRes.json();
+            if (dmJson.message_id) {
+              dmStatus = 'success_interactive_card';
+            } else {
+              // Fallback de texto com Quick Reply ou texto direto
+              const fallbackRes = await fetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${PAGE_TOKEN}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  recipient: { comment_id: comment.id },
+                  message: {
+                    text: firstDmText,
+                    quick_replies: [
                       {
-                        type: "postback",
+                        content_type: "text",
                         title: buttonText,
                         payload: "FOLLOW_CONFIRMED"
                       }
                     ]
                   }
-                ]
-              }
+                })
+              });
+              const fallbackJson = await fallbackRes.json();
+              dmStatus = fallbackJson.message_id ? 'success_quick_reply' : 'failed';
             }
+          } catch (e) {
+            dmStatus = 'error_network';
           }
-        };
 
-        try {
-          const dmRes = await fetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${PAGE_TOKEN}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(caixinhaPayload)
-          });
-          const dmJson = await dmRes.json();
-          if (dmJson.message_id) {
-            dmStatus = 'success_interactive_card';
-          } else {
-            // Fallback de texto com Quick Reply
-            const fallbackRes = await fetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${PAGE_TOKEN}`, {
+          // Intervalo humano de 1.5s entre a DM e o comentário público
+          await sleep(1500);
+
+          // Resposta pública humanizada no comentário do Reels
+          let pubStatus = 'skipped';
+          try {
+            const replyText = PUBLIC_REPLIES[Math.floor(Math.random() * PUBLIC_REPLIES.length)];
+            const pubRes = await fetch(`https://graph.facebook.com/v21.0/${comment.id}/replies?access_token=${PAGE_TOKEN}`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                recipient: { comment_id: comment.id },
-                message: {
-                  text: `${firstDmTitle}\n\n${firstDmSubtitle}`,
-                  quick_replies: [
-                    {
-                      content_type: "text",
-                      title: buttonText,
-                      payload: "FOLLOW_CONFIRMED"
-                    }
-                  ]
-                }
-              })
+              body: JSON.stringify({ message: replyText })
             });
-            const fallbackJson = await fallbackRes.json();
-            dmStatus = fallbackJson.message_id ? 'success_quick_reply' : 'failed';
+            const pubJson = await pubRes.json();
+            if (pubJson.id) pubStatus = 'success';
+          } catch (e) {
+            pubStatus = 'error';
           }
-        } catch (e) {
-          dmStatus = 'error_network';
-        }
 
-        // Delay humano natural de 2 segundos entre a DM e o comentário público
-        await sleep(2000);
-
-        // Resposta pública humanizada no comentário do Reels
-        let pubStatus = 'skipped';
-        try {
-          const replyText = PUBLIC_REPLIES[Math.floor(Math.random() * PUBLIC_REPLIES.length)];
-          const pubRes = await fetch(`https://graph.facebook.com/v21.0/${comment.id}/replies?access_token=${PAGE_TOKEN}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: replyText })
+          processed.push({
+            commentId: comment.id,
+            reelId: reel.id,
+            user,
+            text,
+            dmStatus,
+            pubStatus
           });
-          const pubJson = await pubRes.json();
-          if (pubJson.id) pubStatus = 'success';
-        } catch (e) {
-          pubStatus = 'error';
+
+          commentsProcessed++;
+          await sleep(1500); // Espaçamento suave entre leads
         }
-
-        processed.push({
-          commentId: comment.id,
-          user,
-          text,
-          dmStatus,
-          pubStatus
-        });
-
-        commentsProcessed++;
-        await sleep(3000); // Espaçamento generoso entre leads
       }
     }
 
     return new Response(JSON.stringify({
       success: true,
-      reelId: reel.id,
+      mediaCount: mediaList.length,
       processedCount: processed.length,
       processed,
       skipped

@@ -33,7 +33,9 @@ const INITIAL_FLOWS = [
         title: '1ª DM: Convite & Botão Seguidor',
         position: { x: 420, y: 150 },
         data: {
-          text: 'Me segue ai pra min te enviar ingrato(a) Tô postando video assim toda semana 🚀\n\nDá um pulinho no meu perfil @ygorweb, começa a me seguir e depois toca no botão abaixo pra eu te mandar agora 👇',
+          title: 'Só libera se seguir @ygorweb 🔒',
+          text: 'So me seguir e apertar no botão pra min não tomar ban, Tô postando vídeo assim toda semana 🚀',
+          subtitle: 'So me seguir e apertar no botão pra min não tomar ban, Tô postando vídeo assim toda semana 🚀',
           buttons: [
             { id: 'b_follow', title: '✅ Já estou te seguindo!', targetNode: 'node_send_link' }
           ],
@@ -251,7 +253,7 @@ export const AppProvider = ({ children }) => {
 
   const isInitialSyncDone = useRef(false);
 
-  // Sincronização com o Backend KV da Cloudflare (Kill-Switch em tempo real)
+  // Sincronização com o Backend KV da Cloudflare (Kill-Switch e Textos em tempo real)
   const syncFlowToBackend = async (flowsList) => {
     try {
       const instaFlow = flowsList.find(f => f.channel === 'instagram');
@@ -264,9 +266,13 @@ export const AppProvider = ({ children }) => {
       const keyword = triggerNode?.data?.keyword || 'LISTA';
       const delaySeconds = triggerNode?.data?.delaySeconds || 15;
       const antiBanJitter = triggerNode?.data?.antiBanJitter || 8;
-      const firstDmTitle = gateNode?.data?.title || "Me segue ai pra min te enviar ingrato(a) 🚀";
-      const firstDmSubtitle = gateNode?.data?.subtitle || "Tô postando vídeo assim toda semana! Clica no botão abaixo pra liberar seu link 👇";
+      
+      const gateText = gateNode?.data?.text || gateNode?.data?.subtitle || "So me seguir e apertar no botão pra min não tomar ban, Tô postando vídeo assim toda semana 🚀";
+      const firstDmTitle = gateNode?.data?.title || `Só libera se seguir ${gateNode?.data?.profileHandle || '@ygorweb'} 🔒`;
+      const firstDmSubtitle = gateText;
+      const firstDmText = gateText;
       const buttonText = gateNode?.data?.buttons?.[0]?.title || "✅ Já estou te seguindo!";
+      const fallbackText = gateNode?.data?.fallbackText || "Opa! Vi aqui que você ainda não começou a me seguir 👀\n\nDá um pulinho lá no perfil @ygorweb rapidinho, clica em Seguir e aperta no botão de novo que eu já te libero na hora!";
       const finalLinkMessage = linkNode?.data?.text || `Tá na mão🚀 \nhttps://x.com/Ithielix/status/2109527114760208745\n\nLink do melhor mousepad de 2026 🏆\nhttps://vt.tiktok.com/ZS9UR1CkPgovL-hgiWV/`;
 
       await fetch('/api/state', {
@@ -279,7 +285,9 @@ export const AppProvider = ({ children }) => {
           antiBanJitter,
           firstDmTitle,
           firstDmSubtitle,
+          firstDmText,
           buttonText,
+          travaReminder: fallbackText,
           finalLinkMessage
         })
       });
@@ -293,11 +301,47 @@ export const AppProvider = ({ children }) => {
     fetch('/api/state', { cache: 'no-store' })
       .then(r => r.json())
       .then(data => {
-        if (data.success && data.state && typeof data.state.is_active === 'boolean') {
+        if (data.success && data.state) {
           setFlows(prev => {
             const updated = prev.map(f => {
               if (f.channel === 'instagram') {
-                return { ...f, active: data.state.is_active };
+                const nextActive = typeof data.state.is_active === 'boolean' ? data.state.is_active : f.active;
+                const nextNodes = f.nodes.map(node => {
+                  if (node.type === 'follower_gate') {
+                    const savedText = data.state.firstDmSubtitle || data.state.firstDmText;
+                    return {
+                      ...node,
+                      data: {
+                        ...node.data,
+                        title: data.state.firstDmTitle || node.data?.title || 'Só libera se seguir @ygorweb 🔒',
+                        text: savedText || node.data?.text,
+                        subtitle: savedText || node.data?.subtitle,
+                        fallbackText: data.state.travaReminder || node.data?.fallbackText,
+                        buttons: node.data?.buttons?.map((b, idx) => idx === 0 ? { ...b, title: data.state.buttonText || b.title } : b)
+                      }
+                    };
+                  }
+                  if (node.type === 'message' || node.id === 'node_send_link') {
+                    return {
+                      ...node,
+                      data: {
+                        ...node.data,
+                        text: data.state.finalLinkMessage || node.data?.text
+                      }
+                    };
+                  }
+                  if (node.type === 'trigger') {
+                    return {
+                      ...node,
+                      data: {
+                        ...node.data,
+                        keyword: data.state.keyword || node.data?.keyword || 'LISTA'
+                      }
+                    };
+                  }
+                  return node;
+                });
+                return { ...f, active: nextActive, nodes: nextNodes };
               }
               return f;
             });
@@ -511,9 +555,12 @@ export const AppProvider = ({ children }) => {
       const keyword = triggerNode?.data?.keyword || 'LISTA';
       const delaySeconds = triggerNode?.data?.delaySeconds || 15;
       const antiBanJitter = triggerNode?.data?.antiBanJitter || 8;
-      const firstDmTitle = gateNode?.data?.title || "Me segue ai pra min te enviar ingrato(a) 🚀";
-      const firstDmSubtitle = gateNode?.data?.subtitle || "Tô postando vídeo assim toda semana! Clica no botão abaixo pra liberar seu link 👇";
+      const gateText = gateNode?.data?.text || gateNode?.data?.subtitle || "So me seguir e apertar no botão pra min não tomar ban, Tô postando vídeo assim toda semana 🚀";
+      const firstDmTitle = gateNode?.data?.title || `Só libera se seguir ${gateNode?.data?.profileHandle || '@ygorweb'} 🔒`;
+      const firstDmSubtitle = gateText;
+      const firstDmText = gateText;
       const buttonText = gateNode?.data?.buttons?.[0]?.title || "✅ Já estou te seguindo!";
+      const fallbackText = gateNode?.data?.fallbackText || "Opa! Vi aqui que você ainda não começou a me seguir 👀\n\nDá um pulinho lá no perfil @ygorweb rapidinho, clica em Seguir e aperta no botão de novo que eu já te libero na hora!";
       const finalLinkMessage = linkNode?.data?.text || `Tá na mão🚀 \nhttps://x.com/Ithielix/status/2109527114760208745\n\nLink do melhor mousepad de 2026 🏆\nhttps://vt.tiktok.com/ZS9UR1CkPgovL-hgiWV/`;
 
       const res = await fetch('/api/auto-reply', {
@@ -524,7 +571,9 @@ export const AppProvider = ({ children }) => {
           keyword, 
           firstDmTitle,
           firstDmSubtitle,
+          firstDmText,
           buttonText,
+          travaReminder: fallbackText,
           finalLinkMessage, 
           delaySeconds, 
           antiBanJitter 
@@ -558,6 +607,25 @@ export const AppProvider = ({ children }) => {
     }
   };
 
+  const [saveStatus, setSaveStatus] = useState('');
+
+  const saveFlowsToCloud = async (customFlows) => {
+    const listToSave = customFlows || flows;
+    setSaveStatus('Salvando...');
+    try {
+      localStorage.setItem('webflow_flows_v9', JSON.stringify(listToSave));
+      await syncFlowToBackend(listToSave);
+      setSaveStatus('✅ Salvo na nuvem!');
+      setTimeout(() => setSaveStatus(''), 3000);
+      return true;
+    } catch (err) {
+      console.error('Erro ao salvar fluxo:', err);
+      setSaveStatus('❌ Erro ao salvar');
+      setTimeout(() => setSaveStatus(''), 3000);
+      return false;
+    }
+  };
+
   // Loop inteligente de vigilância em tempo real (apenas se a automação do Instagram estiver ligada)
   useEffect(() => {
     const isInstaActive = flows.some(f => f.channel === 'instagram' && f.active);
@@ -586,6 +654,8 @@ export const AppProvider = ({ children }) => {
       setSelectedFlowId,
       updateFlow,
       createFlow,
+      saveFlowsToCloud,
+      saveStatus,
       triggers,
       setTriggers,
       contacts,

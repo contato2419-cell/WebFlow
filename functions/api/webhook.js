@@ -17,8 +17,9 @@ const DEFAULT_STATE = {
   keyword: 'LISTA',
   delaySeconds: 15,
   antiBanJitter: 8,
-  firstDmTitle: 'Me segue ai pra min te enviar ingrato(a) 🚀',
-  firstDmSubtitle: 'Tô postando vídeo assim toda semana! Clica no botão abaixo pra liberar seu link 👇',
+  firstDmTitle: 'Só libera se seguir @ygorweb 🔒',
+  firstDmSubtitle: 'So me seguir e apertar no botão pra min não tomar ban, Tô postando vídeo assim toda semana 🚀',
+  firstDmText: 'So me seguir e apertar no botão pra min não tomar ban, Tô postando vídeo assim toda semana 🚀',
   buttonText: '✅ Já estou te seguindo!',
   finalLinkMessage: `Tá na mão🚀 \nhttps://x.com/Ithielix/status/2109527114760208745\n\nLink do melhor mousepad de 2026 🏆\nhttps://vt.tiktok.com/ZS9UR1CkPgovL-hgiWV/`,
   travaReminder: `Opa! Vi aqui que você ainda não começou a me seguir 👀\n\nDá um pulinho lá no perfil @ygorweb rapidinho, clica em Seguir e aperta no botão de novo que eu já te libero na hora!`
@@ -127,6 +128,12 @@ export async function onRequestPost(context) {
               continue; // Comentário comum sem a palavra-chave. NÃO FAZ NADA!
             }
 
+            // Suporte aos textos configurados pelo usuário
+            const firstDmText = state.firstDmSubtitle || state.firstDmText || "So me seguir e apertar no botão pra min não tomar ban, Tô postando vídeo assim toda semana 🚀";
+            const firstDmTitle = (state.firstDmTitle || "Só libera se seguir @ygorweb 🔒").slice(0, 80);
+            const firstDmSubtitle = firstDmText.slice(0, 80);
+            const buttonText = (state.buttonText || "✅ Já estou te seguindo!").slice(0, 20);
+
             // Envia a Caixinha Interativa (Generic Template) com o botão nativo da Meta
             const caixinhaPayload = {
               recipient: { comment_id: commentData.id },
@@ -137,12 +144,12 @@ export async function onRequestPost(context) {
                     template_type: "generic",
                     elements: [
                       {
-                        title: state.firstDmTitle || "Me segue ai pra min te enviar ingrato(a) 🚀",
-                        subtitle: state.firstDmSubtitle || "Tô postando vídeo assim toda semana! Clica no botão abaixo pra liberar seu link 👇",
+                        title: firstDmTitle,
+                        subtitle: firstDmSubtitle,
                         buttons: [
                           {
                             type: "postback",
-                            title: state.buttonText || "✅ Já estou te seguindo!",
+                            title: buttonText,
                             payload: "FOLLOW_CONFIRMED"
                           }
                         ]
@@ -169,11 +176,11 @@ export async function onRequestPost(context) {
                   body: JSON.stringify({
                     recipient: { comment_id: commentData.id },
                     message: {
-                      text: `${state.firstDmTitle}\n\n${state.firstDmSubtitle}`,
+                      text: firstDmText,
                       quick_replies: [
                         {
                           content_type: "text",
-                          title: state.buttonText || "✅ Já estou te seguindo!",
+                          title: buttonText,
                           payload: "FOLLOW_CONFIRMED"
                         }
                       ]
@@ -233,6 +240,9 @@ export async function onRequestPost(context) {
 
           // Caso 1: Usuário enviou a palavra-chave no Direct (ex: "LISTA")
           if (isExactKeyword && !isButtonClicked) {
+            const firstDmText = state.firstDmSubtitle || state.firstDmText || "So me seguir e apertar no botão pra min não tomar ban, Tô postando vídeo assim toda semana 🚀";
+            const buttonText = (state.buttonText || "✅ Já estou te seguindo!").slice(0, 20);
+
             try {
               await fetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${PAGE_TOKEN}`, {
                 method: 'POST',
@@ -240,11 +250,11 @@ export async function onRequestPost(context) {
                 body: JSON.stringify({
                   recipient: { id: senderId },
                   message: {
-                    text: `${state.firstDmTitle}\n\n${state.firstDmSubtitle}`,
+                    text: firstDmText,
                     quick_replies: [
                       {
                         content_type: "text",
-                        title: state.buttonText || "✅ Já estou te seguindo!",
+                        title: buttonText,
                         payload: "FOLLOW_CONFIRMED"
                       }
                     ]
