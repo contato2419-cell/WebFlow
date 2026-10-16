@@ -124,6 +124,32 @@ const INITIAL_TRIGGERS = [
   }
 ];
 
+function formatMetaButtonTitle(str) {
+  if (!str) return '✅ Já estou seguindo';
+  str = String(str).trim();
+  if (str.length <= 20) return str;
+
+  if (/já\s+estou\s+te\s+seguindo/i.test(str)) {
+    return '✅ Já estou seguindo'; // 19 caracteres!
+  }
+  if (/estou\s+te\s+seguindo/i.test(str)) {
+    return 'Já estou seguindo'; // 17 caracteres!
+  }
+  if (/já\s+te\s+sigo/i.test(str)) {
+    return '✅ Já te sigo!'; // 12 caracteres!
+  }
+
+  let clean = str.replace(/[!?.]$/, '').trim();
+  if (clean.length <= 20) return clean;
+
+  let truncated = clean.slice(0, 20);
+  const lastSpace = truncated.lastIndexOf(' ');
+  if (lastSpace > 8) {
+    truncated = truncated.slice(0, lastSpace);
+  }
+  return truncated.trim() || 'Já estou seguindo';
+}
+
 export const AppProvider = ({ children }) => {
   const [currentView, setCurrentViewState] = useState('flows');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -236,7 +262,6 @@ export const AppProvider = ({ children }) => {
         token: 'EAAdPoo2JfNUBSrpDVADHAZBWNClCWCaLngml0bbTRS5dv0I8RX4jceRChZBi3pZBkg6xmr3MIfMQSTvvMMLJG8RP4lfn97w2M0xZAbdWFA9BETDkfzfjP3MMlO1eoIMAehygJsCdinlt1g2w1Vqx3lZBnb0ZBmHUti2plKKatMZClKW2SIKL3jGwXOwipcvk65pZCHHbK0dB'
       },
       whatsapp: { connected: false, number: '', wabaId: '', verified: false },
-      messenger: { connected: false, pageId: '' },
       telegram: { connected: false, botUsername: '' }
     };
   });
@@ -260,7 +285,8 @@ export const AppProvider = ({ children }) => {
       const is_active = Boolean(instaFlow?.active);
 
       const triggerNode = instaFlow?.nodes?.find(n => n.type === 'trigger');
-      const gateNode = instaFlow?.nodes?.find(n => n.type === 'follower_gate');
+      const allGateNodes = (instaFlow?.nodes || []).filter(n => n.type === 'follower_gate');
+      const gateNode = allGateNodes.find(n => n.id === selectedFlowId) || allGateNodes[0];
       const linkNode = instaFlow?.nodes?.find(n => n.type === 'message' || n.id === 'node_send_link');
 
       // Coleta todas as palavras-chave dos gatilhos do fluxo (ex: LISTA, REA)
@@ -272,11 +298,12 @@ export const AppProvider = ({ children }) => {
       const delaySeconds = triggerNode?.data?.delaySeconds || 15;
       const antiBanJitter = triggerNode?.data?.antiBanJitter || 8;
       
-      const gateText = gateNode?.data?.text || gateNode?.data?.subtitle || "Tô postando vídeo assim toda semana! Clica no botão abaixo pra liberar o link 👇";
-      const firstDmTitle = gateNode?.data?.title || "Me segue ai pra min te enviar ingrato(a) 🚀";
+      const firstDmTitle = gateNode?.data?.title || "Só me seguir e clicar no botão pra min não tomar ban";
+      const gateText = gateNode?.data?.text || gateNode?.data?.subtitle || "Tô postando vídeo assim toda semana! Clica no botão abaixo pra receber 📲";
       const firstDmSubtitle = gateText;
       const firstDmText = gateText;
-      const buttonText = gateNode?.data?.buttons?.[0]?.title || "✅ Já estou te seguindo!";
+      const rawBtn = gateNode?.data?.buttons?.[0]?.title || "✅ Já estou seguindo";
+      const buttonText = formatMetaButtonTitle(rawBtn);
       const fallbackText = gateNode?.data?.fallbackText || "Opa! Vi aqui que você ainda não começou a me seguir 👀\n\nDá um pulinho lá no perfil @ygorweb rapidinho, clica em Seguir e aperta no botão de novo que eu já te libero na hora!";
       const finalLinkMessage = linkNode?.data?.text || `Tá na mão🚀 \nhttps://x.com/Ithielix/status/2109527114760208745\n\nLink do melhor mousepad de 2026 🏆\nhttps://vt.tiktok.com/ZS9UR1CkPgovL-hgiWV/`;
 
@@ -482,20 +509,29 @@ export const AppProvider = ({ children }) => {
   };
 
 
-  // Ações de Fluxos
+  const autoSyncTimerRef = useRef(null);
+
+  // Ações de Fluxos com Auto-Sincronização imediata para Nuvem KV
   const updateFlow = async (flowId, updatedData) => {
+    let nextFlows;
     setFlows(prev => {
-      const updated = prev.map(f => f.id === flowId ? { ...f, ...updatedData, lastModified: 'Agora' } : f);
+      nextFlows = prev.map(f => f.id === flowId ? { ...f, ...updatedData, lastModified: 'Agora' } : f);
       try {
-        localStorage.setItem('webflow_flows_v9', JSON.stringify(updated));
+        localStorage.setItem('webflow_flows_v9', JSON.stringify(nextFlows));
       } catch (e) {}
-      return updated;
+      return nextFlows;
     });
 
     if (updatedData.active !== undefined) {
       isInitialSyncDone.current = true;
-      const nextFlows = flows.map(f => f.id === flowId ? { ...f, ...updatedData } : f);
-      await syncFlowToBackend(nextFlows);
+      const syncList = flows.map(f => f.id === flowId ? { ...f, ...updatedData } : f);
+      await syncFlowToBackend(syncList);
+    } else if (nextFlows) {
+      // Auto-sincroniza alterações de textos, títulos e botões imediatamente com debounce de 400ms
+      if (autoSyncTimerRef.current) clearTimeout(autoSyncTimerRef.current);
+      autoSyncTimerRef.current = setTimeout(() => {
+        syncFlowToBackend(nextFlows);
+      }, 400);
     }
   };
 
@@ -551,20 +587,31 @@ export const AppProvider = ({ children }) => {
       }
 
       setIsRunningAutomation(true);
-      setAutomationStatus('Buscando novos comentários no Reel...');
+      setAutomationStatus('Sincronizando fluxo com a nuvem e buscando comentários...');
       
+      // Salva e sincroniza os dados mais recentes do fluxo na nuvem antes de disparar
+      await syncFlowToBackend(flows);
+
       const triggerNode = activeFlow?.nodes?.find(n => n.type === 'trigger');
-      const gateNode = activeFlow?.nodes?.find(n => n.type === 'follower_gate');
+      const allGateNodes = (activeFlow?.nodes || []).filter(n => n.type === 'follower_gate');
+      const gateNode = allGateNodes.find(n => n.id === selectedFlowId) || allGateNodes[0];
       const linkNode = activeFlow?.nodes?.find(n => n.type === 'message' || n.id === 'node_send_link');
 
-      const keyword = triggerNode?.data?.keyword || 'LISTA';
+      // Coleta todas as palavras-chave de todos os blocos de gatilho do fluxo
+      const triggerKeywords = (activeFlow?.nodes || [])
+        .filter(n => n.type === 'trigger' && n.data?.keyword)
+        .map(n => n.data.keyword.trim())
+        .filter(Boolean);
+      const keyword = triggerKeywords.length > 0 ? triggerKeywords.join(', ') : (triggerNode?.data?.keyword || 'LISTA');
+
       const delaySeconds = triggerNode?.data?.delaySeconds || 15;
       const antiBanJitter = triggerNode?.data?.antiBanJitter || 8;
-      const gateText = gateNode?.data?.text || gateNode?.data?.subtitle || "Tô postando vídeo assim toda semana! Clica no botão abaixo pra liberar o link 👇";
-      const firstDmTitle = gateNode?.data?.title || "Me segue ai pra min te enviar ingrato(a) 🚀";
+      const firstDmTitle = gateNode?.data?.title || "Só me seguir e clicar no botão pra min não tomar ban";
+      const gateText = gateNode?.data?.text || gateNode?.data?.subtitle || "Tô postando vídeo assim toda semana! Clica no botão abaixo pra receber 📲";
       const firstDmSubtitle = gateText;
       const firstDmText = gateText;
-      const buttonText = gateNode?.data?.buttons?.[0]?.title || "✅ Já estou te seguindo!";
+      const rawBtn = gateNode?.data?.buttons?.[0]?.title || "✅ Já estou seguindo";
+      const buttonText = formatMetaButtonTitle(rawBtn);
       const fallbackText = gateNode?.data?.fallbackText || "Opa! Vi aqui que você ainda não começou a me seguir 👀\n\nDá um pulinho lá no perfil @ygorweb rapidinho, clica em Seguir e aperta no botão de novo que eu já te libero na hora!";
       const finalLinkMessage = linkNode?.data?.text || `Tá na mão🚀 \nhttps://x.com/Ithielix/status/2109527114760208745\n\nLink do melhor mousepad de 2026 🏆\nhttps://vt.tiktok.com/ZS9UR1CkPgovL-hgiWV/`;
 

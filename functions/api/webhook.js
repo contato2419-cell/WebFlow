@@ -80,6 +80,32 @@ function smartMetaCardSubtitle(str) {
   return sliced.trim();
 }
 
+function formatMetaButtonTitle(str) {
+  if (!str) return '✅ Já estou seguindo';
+  str = String(str).trim();
+  if (str.length <= 20) return str;
+
+  if (/já\s+estou\s+te\s+seguindo/i.test(str)) {
+    return '✅ Já estou seguindo'; // 19 caracteres exatos!
+  }
+  if (/estou\s+te\s+seguindo/i.test(str)) {
+    return 'Já estou seguindo'; // 17 caracteres exatos!
+  }
+  if (/já\s+te\s+sigo/i.test(str)) {
+    return '✅ Já te sigo!'; // 12 caracteres!
+  }
+
+  let clean = str.replace(/[!?.]$/, '').trim();
+  if (clean.length <= 20) return clean;
+
+  let truncated = clean.slice(0, 20);
+  const lastSpace = truncated.lastIndexOf(' ');
+  if (lastSpace > 8) {
+    truncated = truncated.slice(0, lastSpace);
+  }
+  return truncated.trim() || 'Já estou seguindo';
+}
+
 export async function onRequestGet(context) {
   const { request, env } = context;
   const url = new URL(request.url);
@@ -152,10 +178,11 @@ export async function onRequestPost(context) {
 
             // Suporte aos textos configurados pelo usuário
             const firstDmText = state.firstDmSubtitle || state.firstDmText || "Tô postando vídeo assim toda semana! Clica no botão abaixo pra liberar o link 👇";
-            const rawTitle = state.firstDmTitle || "Me segue ai pra min te enviar ingrato(a) 🚀";
+            const rawTitle = state.firstDmTitle || "Só me seguir e clicar no botão pra min não tomar ban";
             const firstDmTitle = rawTitle.length <= 80 ? rawTitle : rawTitle.slice(0, 80);
             const firstDmSubtitle = smartMetaCardSubtitle(firstDmText);
-            const buttonText = (state.buttonText || "✅ Já estou te seguindo!").slice(0, 20);
+            const rawBtn = state.buttonText || "✅ Já estou seguindo";
+            const buttonText = formatMetaButtonTitle(rawBtn);
 
             // Envia a Caixinha Interativa (Generic Template) com o botão nativo da Meta
             const caixinhaPayload = {
@@ -199,7 +226,7 @@ export async function onRequestPost(context) {
                   body: JSON.stringify({
                     recipient: { comment_id: commentData.id },
                     message: {
-                      text: firstDmText,
+                      text: firstDmTitle ? `${firstDmTitle}\n\n${firstDmText}` : firstDmText,
                       quick_replies: [
                         {
                           content_type: "text",
@@ -264,7 +291,8 @@ export async function onRequestPost(context) {
           // Caso 1: Usuário enviou a palavra-chave no Direct (ex: "LISTA")
           if (isExactKeyword && !isButtonClicked) {
             const firstDmText = state.firstDmSubtitle || state.firstDmText || "Tô postando vídeo assim toda semana! Clica no botão abaixo pra liberar o link 👇";
-            const buttonText = (state.buttonText || "✅ Já estou te seguindo!").slice(0, 20);
+            const rawBtn = state.buttonText || "✅ Já estou seguindo";
+            const buttonText = formatMetaButtonTitle(rawBtn);
 
             try {
               await fetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${PAGE_TOKEN}`, {
@@ -331,7 +359,7 @@ export async function onRequestPost(context) {
                       quick_replies: [
                         {
                           content_type: "text",
-                          title: state.buttonText || "✅ Já estou te seguindo!",
+                          title: formatMetaButtonTitle(state.buttonText),
                           payload: "FOLLOW_CONFIRMED"
                         }
                       ]

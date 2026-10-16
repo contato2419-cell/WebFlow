@@ -85,6 +85,33 @@ function smartMetaCardSubtitle(str) {
   return sliced.trim();
 }
 
+function formatMetaButtonTitle(str) {
+  if (!str) return '✅ Já estou seguindo';
+  str = String(str).trim();
+  if (str.length <= 20) return str;
+
+  // Substituições inteligentes para frases padrão de verificação de seguidor
+  if (/já\s+estou\s+te\s+seguindo/i.test(str)) {
+    return '✅ Já estou seguindo'; // 19 caracteres exatos!
+  }
+  if (/estou\s+te\s+seguindo/i.test(str)) {
+    return 'Já estou seguindo'; // 17 caracteres exatos!
+  }
+  if (/já\s+te\s+sigo/i.test(str)) {
+    return '✅ Já te sigo!'; // 12 caracteres!
+  }
+
+  let clean = str.replace(/[!?.]$/, '').trim();
+  if (clean.length <= 20) return clean;
+
+  let truncated = clean.slice(0, 20);
+  const lastSpace = truncated.lastIndexOf(' ');
+  if (lastSpace > 8) {
+    truncated = truncated.slice(0, lastSpace);
+  }
+  return truncated.trim() || 'Já estou seguindo';
+}
+
 export async function onRequestPost(context) {
   const { request, env } = context;
   const PAGE_TOKEN = env.META_PAGE_ACCESS_TOKEN || 'EAAdPoo2JfNUBSrpDVADHAZBWNClCWCaLngml0bbTRS5dv0I8RX4jceRChZBi3pZBkg6xmr3MIfMQSTvvMMLJG8RP4lfn97w2M0xZAbdWFA9BETDkfzfjP3MMlO1eoIMAehygJsCdinlt1g2w1Vqx3lZBnb0ZBmHUti2plKKatMZClKW2SIKL3jGwXOwipcvk65pZCHHbK0dB';
@@ -116,10 +143,11 @@ export async function onRequestPost(context) {
     
     // Suporte prioritário aos textos configurados pelo usuário nas caixinhas do Flow
     const firstDmText = body.firstDmText || body.firstDmSubtitle || state.firstDmSubtitle || state.firstDmText || 'Tô postando vídeo assim toda semana! Clica no botão abaixo pra liberar o link 👇';
-    const rawTitle = body.firstDmTitle || state.firstDmTitle || 'Me segue ai pra min te enviar ingrato(a) 🚀';
+    const rawTitle = body.firstDmTitle || state.firstDmTitle || 'Só me seguir e clicar no botão pra min não tomar ban';
     const firstDmTitle = rawTitle.length <= 80 ? rawTitle : rawTitle.slice(0, 80);
     const firstDmSubtitle = smartMetaCardSubtitle(firstDmText);
-    const buttonText = (body.buttonText || state.buttonText || '✅ Já estou te seguindo!').slice(0, 20);
+    const rawBtn = body.buttonText || state.buttonText || '✅ Já estou seguindo';
+    const buttonText = formatMetaButtonTitle(rawBtn);
 
     // 2. Busca os Reels mais recentes (até 8 mídias) para varredura completa
     const mediaRes = await fetch(`https://graph.facebook.com/v21.0/${IG_USER_ID}/media?fields=id,caption,media_type,timestamp&limit=8&access_token=${PAGE_TOKEN}`);
@@ -226,7 +254,7 @@ export async function onRequestPost(context) {
                 body: JSON.stringify({
                   recipient: { comment_id: comment.id },
                   message: {
-                    text: firstDmText,
+                    text: firstDmTitle ? `${firstDmTitle}\n\n${firstDmText}` : firstDmText,
                     quick_replies: [
                       {
                         content_type: "text",

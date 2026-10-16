@@ -92,7 +92,17 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
             ...n,
             data: {
               ...n.data,
-              buttons: [{ id: btnId, title: '✅ Já estou te seguindo!', targetNode: targetId }]
+              buttons: [{ id: btnId, title: '✅ Já estou seguindo', targetNode: targetId }]
+            }
+          };
+        } else if (n.data.buttons.some(b => b.title === '✅ Já estou te seguindo!')) {
+          // Atualiza automaticamente o texto antigo que passava de 20 chars para a versão segura que a Meta aceita sem cortar
+          needsRepair = true;
+          return {
+            ...n,
+            data: {
+              ...n.data,
+              buttons: n.data.buttons.map(b => b.title === '✅ Já estou te seguindo!' ? { ...b, title: '✅ Já estou seguindo' } : b)
             }
           };
         }
@@ -981,7 +991,7 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
                       {(() => {
                         const buttons = (node.data?.buttons && node.data.buttons.length > 0)
                           ? node.data.buttons
-                          : [{ id: 'b_follow_' + node.id, title: '✅ Já estou te seguindo!', targetNode: '' }];
+                          : [{ id: 'b_follow_' + node.id, title: '✅ Já estou seguindo', targetNode: '' }];
 
                         return (
                           <div className="space-y-1.5 pt-1">
@@ -1122,11 +1132,11 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
                         newTitle = '1ª DM: Convite & Botão Seguidor';
                         const existingButtons = (n.data?.buttons && n.data.buttons.length > 0)
                           ? n.data.buttons
-                          : [{ id: 'b_follow_' + Date.now(), title: '✅ Já estou te seguindo!', targetNode: '' }];
+                          : [{ id: 'b_follow_' + Date.now(), title: '✅ Já estou seguindo', targetNode: '' }];
                         newData = {
-                          title: n.data?.title || 'Me segue ai pra min te enviar ingrato(a) 🚀',
-                          text: n.data?.text || 'Tô postando vídeo assim toda semana! Clica no botão abaixo pra liberar o link 👇',
-                          subtitle: n.data?.subtitle || n.data?.text || 'Tô postando vídeo assim toda semana! Clica no botão abaixo pra liberar o link 👇',
+                          title: n.data?.title || 'Só me seguir e clicar no botão pra min não tomar ban',
+                          text: n.data?.text || 'Tô postando vídeo assim toda semana! Clica no botão abaixo pra receber 📲',
+                          subtitle: n.data?.subtitle || n.data?.text || 'Tô postando vídeo assim toda semana! Clica no botão abaixo pra receber 📲',
                           fallbackText: n.data?.fallbackText || 'Opa! Vi aqui que você ainda não começou a me seguir 👀 Dá um pulinho lá no perfil @ygorweb rapidinho, clica em Seguir e aperta no botão de novo que eu já te libero na hora!',
                           profileHandle: '@ygorweb',
                           requireFollow: true,
@@ -1301,7 +1311,7 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
                   {(() => {
                     const currentButtons = (selectedNode.data?.buttons && selectedNode.data.buttons.length > 0)
                       ? selectedNode.data.buttons
-                      : [{ id: 'b_follow_' + selectedNode.id, title: '✅ Já estou te seguindo!', targetNode: '' }];
+                      : [{ id: 'b_follow_' + selectedNode.id, title: '✅ Já estou seguindo', targetNode: '' }];
 
                     return (
                       <div className="space-y-3">
@@ -1314,10 +1324,13 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
                             <div key={portId} className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-2">
                               <div className="flex items-center justify-between">
                                 <label className="text-[10px] text-slate-500 font-bold uppercase">Texto do Botão</label>
-                                <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold">Verificação</span>
+                                <span className={`text-[10px] font-bold ${btn.title.length > 20 ? 'text-rose-500' : 'text-indigo-600 dark:text-indigo-400'}`}>
+                                  {btn.title.length}/20 chars (Limite Meta)
+                                </span>
                               </div>
                               <input
                                 type="text"
+                                maxLength={20}
                                 value={btn.title}
                                 onChange={(e) => {
                                   const newButtons = currentButtons.map(b => b.id === btn.id ? { ...b, title: e.target.value } : b);
@@ -1325,6 +1338,7 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
                                   updateFlow(currentFlow.id, { nodes: updatedNodes });
                                 }}
                                 className="w-full px-2 py-1.5 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-semibold"
+                                placeholder="Ex: ✅ Já estou seguindo"
                               />
                               <div>
                                 <label className="text-[10px] text-slate-500 font-medium block mb-1">🔗 Se já seguiu, ir para o bloco:</label>
