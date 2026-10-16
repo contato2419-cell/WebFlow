@@ -91,7 +91,7 @@ export const AuthProvider = ({ children }) => {
           name,
           email,
           workspace: `${name} Workspace`,
-          avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=100&h=100&fit=crop'
+          avatar: '/avatar_ygorweb.jpg'
         };
         setUser(newUser);
         return { success: true };
@@ -101,7 +101,7 @@ export const AuthProvider = ({ children }) => {
           name,
           email,
           workspace: `${name} Workspace`,
-          avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=100&h=100&fit=crop'
+          avatar: '/avatar_ygorweb.jpg'
         };
         setUser(newUser);
         return { success: true };

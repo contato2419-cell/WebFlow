@@ -198,24 +198,28 @@ export const AppProvider = ({ children }) => {
   });
 
   const [conversations, setConversations] = useState(() => {
-    // Limpeza de versões anteriores com dados mockados
+    // Limpeza de versões anteriores com dados mockados ou fotos de stock
     try {
       localStorage.removeItem('webflow_conversations_v20');
       localStorage.removeItem('webflow_conversations_v21');
       localStorage.removeItem('webflow_conversations_v22');
       localStorage.removeItem('webflow_conversations_v25');
+      localStorage.removeItem('webflow_conversations_v26');
     } catch (e) {}
 
-    const saved = localStorage.getItem('webflow_conversations_v26');
+    const saved = localStorage.getItem('webflow_conversations_v27');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0 && !parsed.some(c => c.handle === '@aa_santana_')) {
-          return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map(c => ({
+            ...c,
+            avatar: c.avatar && !c.avatar.includes('unsplash.com') ? c.avatar : null
+          }));
         }
       } catch (e) {}
     }
-    return INITIAL_CONVERSATIONS;
+    return [];
   });
 
   const [channels, setChannels] = useState(() => {
@@ -316,7 +320,7 @@ export const AppProvider = ({ children }) => {
         if (data.success && data.conversations && data.conversations.length > 0) {
           setConversations(data.conversations);
           try {
-            localStorage.setItem('webflow_conversations_v26', JSON.stringify(data.conversations));
+            localStorage.setItem('webflow_conversations_v27', JSON.stringify(data.conversations));
           } catch (e) {}
         }
       })
@@ -344,7 +348,7 @@ export const AppProvider = ({ children }) => {
   }, [contacts]);
 
   useEffect(() => {
-    localStorage.setItem('webflow_conversations_v26', JSON.stringify(conversations));
+    localStorage.setItem('webflow_conversations_v27', JSON.stringify(conversations));
   }, [conversations]);
 
   useEffect(() => {
@@ -361,7 +365,7 @@ export const AppProvider = ({ children }) => {
         return c;
       });
       try {
-        localStorage.setItem('webflow_conversations_v26', JSON.stringify(updated));
+        localStorage.setItem('webflow_conversations_v27', JSON.stringify(updated));
       } catch (e) {}
       return updated;
     });
@@ -392,7 +396,7 @@ export const AppProvider = ({ children }) => {
         return c;
       });
       try {
-        localStorage.setItem('webflow_conversations_v26', JSON.stringify(updated));
+        localStorage.setItem('webflow_conversations_v27', JSON.stringify(updated));
       } catch (e) {}
       return updated;
     });
@@ -407,7 +411,7 @@ export const AppProvider = ({ children }) => {
         return c;
       });
       try {
-        localStorage.setItem('webflow_conversations_v26', JSON.stringify(updated));
+        localStorage.setItem('webflow_conversations_v27', JSON.stringify(updated));
       } catch (e) {}
       return updated;
     });
@@ -422,7 +426,7 @@ export const AppProvider = ({ children }) => {
         return c;
       });
       try {
-        localStorage.setItem('webflow_conversations_v26', JSON.stringify(updated));
+        localStorage.setItem('webflow_conversations_v27', JSON.stringify(updated));
       } catch (e) {}
       return updated;
     });

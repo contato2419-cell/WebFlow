@@ -1,43 +1,31 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { InstagramIcon } from '../Icons';
-import { MessageCircle } from 'lucide-react';
+import { MessageCircle, User } from 'lucide-react';
 
-// Pool curado de retratos humanos de alta resolução (Unsplash) para perfis sem foto ou com consentimento restrito pela Meta (#230)
-const DETERMINISTIC_AVATARS = [
-  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1517849845537-4d257902454a?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1548142813-c348350df52b?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1517677208171-0bc6725a3e60?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=150&auto=format&fit=crop&q=80'
+// Paleta de gradientes modernos e elegantes idêntica ao ManyChat e Meta Business Suite
+const MONOGRAM_PALETTES = [
+  'from-violet-600 to-indigo-600',
+  'from-blue-600 to-cyan-600',
+  'from-emerald-600 to-teal-600',
+  'from-rose-600 to-pink-600',
+  'from-amber-600 to-orange-600',
+  'from-fuchsia-600 to-purple-600',
+  'from-sky-600 to-blue-700'
 ];
 
-export const getDeterministicAvatar = (str) => {
-  if (!str) return DETERMINISTIC_AVATARS[0];
+export const getMonogramGradient = (str) => {
+  if (!str) return MONOGRAM_PALETTES[0];
   let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash << 5) - hash + str.charCodeAt(i);
-  }
-  return DETERMINISTIC_AVATARS[Math.abs(hash) % DETERMINISTIC_AVATARS.length];
+  for (let i = 0; i < str.length; i++) hash = (hash << 5) - hash + str.charCodeAt(i);
+  return MONOGRAM_PALETTES[Math.abs(hash) % MONOGRAM_PALETTES.length];
+};
+
+export const getInitials = (str) => {
+  if (!str) return '';
+  const clean = str.replace(/^@/, '').replace(/[^a-zA-Z0-9]/g, '');
+  if (!clean) return str.replace(/^@/, '').slice(0, 2).toUpperCase();
+  if (clean.length === 1) return clean.toUpperCase();
+  return clean.slice(0, 2).toUpperCase();
 };
 
 export const UserAvatar = ({ 
@@ -52,20 +40,20 @@ export const UserAvatar = ({
 }) => {
   const [imgError, setImgError] = useState(false);
   const cleanHandle = useMemo(() => (handle || name || '').replace(/^@/, '').toLowerCase().trim(), [handle, name]);
-  const isOwner = cleanHandle === 'ygorweb' || name === 'Ygor Souza';
+  
+  // Identificação do dono (@ygorweb e @yygor02) e da marca (@vitrixapp)
+  const isOwner = cleanHandle === 'ygorweb' || cleanHandle === 'yygor02' || name === 'Ygor Souza';
   const isVitrix = cleanHandle === 'vitrixapp' || cleanHandle === 'vitrix';
 
-  // Resolução da foto com prioridade estrita:
-  // 1. Dono do sistema (@ygorweb) -> foto oficial local
-  // 2. VitrixApp (@vitrixapp) -> logo oficial local
-  // 3. Foto customizada salva localmente pelo usuário no botão Foto
-  // 4. URL direta da Meta (avatar)
-  // 5. Retrato determinístico humano persistente baseado no @handle
-  const resolvedPhoto = useMemo(() => {
+  // Resolução da foto real:
+  // 1. Dono do sistema (@ygorweb e @yygor02) -> foto oficial local (/avatar_ygorweb.jpg)
+  // 2. VitrixApp (@vitrixapp) -> logo oficial local (/logo.jpg)
+  // 3. Foto real da Meta CDN (apenas URLs válidas e sem fotos de stock/IA)
+  const realPhoto = useMemo(() => {
     if (isOwner) return '/avatar_ygorweb.jpg';
     if (isVitrix) return '/logo.jpg';
-    if (avatar && !imgError) return avatar;
-    return getDeterministicAvatar(cleanHandle);
+    if (avatar && !imgError && !avatar.includes('unsplash.com')) return avatar;
+    return null;
   }, [cleanHandle, isOwner, isVitrix, avatar, imgError]);
 
   useEffect(() => {
@@ -74,7 +62,7 @@ export const UserAvatar = ({
 
   // Tamanhos
   const sizeClasses = {
-    sm: 'w-7 h-7 text-xs',
+    sm: 'w-7 h-7 text-[10px]',
     md: 'w-10 h-10 text-xs font-bold',
     lg: 'w-12 h-12 text-sm font-bold',
     xl: 'w-14 h-14 text-base font-bold'
@@ -87,6 +75,9 @@ export const UserAvatar = ({
     xl: 'w-4.5 h-4.5'
   };
 
+  const initials = useMemo(() => getInitials(cleanHandle || name), [cleanHandle, name]);
+  const gradientClass = useMemo(() => getMonogramGradient(cleanHandle), [cleanHandle]);
+
   return (
     <div 
       onClick={onClick}
@@ -95,15 +86,24 @@ export const UserAvatar = ({
       {/* Moldura de Story do Instagram: idêntico ao Instagram App oficial */}
       <div className="p-0.5 rounded-full bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600">
         <div className="rounded-full bg-white dark:bg-slate-900 p-0.5">
-          <img
-            src={resolvedPhoto}
-            alt={name || handle || 'Foto de Perfil'}
-            referrerPolicy="no-referrer"
-            onError={() => {
-              if (!imgError) setImgError(true);
-            }}
-            className={`${sizeClasses[size] || sizeClasses.md} rounded-full object-cover shadow-2xs`}
-          />
+          {realPhoto ? (
+            <img
+              src={realPhoto}
+              alt={name || handle || 'Foto de Perfil'}
+              referrerPolicy="no-referrer"
+              onError={() => {
+                if (!imgError) setImgError(true);
+              }}
+              className={`${sizeClasses[size] || sizeClasses.md} rounded-full object-cover shadow-2xs`}
+            />
+          ) : (
+            /* Fallback estilo ManyChat e Meta Business Suite: Monograma em Gradiente Vibrante com Tipografia Nítida */
+            <div 
+              className={`${sizeClasses[size] || sizeClasses.md} rounded-full bg-gradient-to-br ${gradientClass} flex items-center justify-center text-white tracking-wider font-extrabold shadow-inner select-none`}
+            >
+              {initials || <User className="w-1/2 h-1/2 text-white/90" />}
+            </div>
+          )}
         </div>
       </div>
 
@@ -119,3 +119,4 @@ export const UserAvatar = ({
     </div>
   );
 };
+

@@ -215,7 +215,7 @@ export const LiveChatView = () => {
         setConversations(prev => {
           const merged = mergeConversations(prev, data.conversations);
           try {
-            localStorage.setItem('webflow_conversations_v26', JSON.stringify(merged));
+            localStorage.setItem('webflow_conversations_v27', JSON.stringify(merged));
           } catch (e) {}
           return merged;
         });

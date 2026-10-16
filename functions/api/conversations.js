@@ -3,34 +3,7 @@
 
 const PAGE_ID = '1299815346552748';
 
-const FALLBACK_AVATARS = [
-  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1517849845537-4d257902454a?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1548142813-c348350df52b?w=150&auto=format&fit=crop&q=80'
-];
 
-function getFallbackAvatar(str) {
-  if (!str) return FALLBACK_AVATARS[0];
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) hash = (hash << 5) - hash + str.charCodeAt(i);
-  return FALLBACK_AVATARS[Math.abs(hash) % FALLBACK_AVATARS.length];
-}
 
 // Formatação contextual idêntica ao Instagram Direct / WhatsApp (Hoje: 11:20 | Ontem: Ontem 22:45 | Outro dia: 14/10 21:17)
 function formatSmartTime(isoString) {
@@ -151,20 +124,20 @@ export async function onRequestGet(context) {
         const lastMsg = rawMessages.length > 0 ? rawMessages[rawMessages.length - 1] : null;
         const lastTime = formatSmartTime(lastMsg?.created_time || thread.updated_time);
 
-        // Foto com resolução estrita garantida:
-        // 1. Owner -> foto local
-        // 2. VitrixApp -> logo oficial
-        // 3. Meta profile_pic se disponível
-        // 4. Retrato humano determinístico persistente
+        // Foto com resolução oficial e sem fotos falsas de IA/Stock:
+        // 1. Owner (@ygorweb e @yygor02) -> foto oficial local (/avatar_ygorweb.jpg)
+        // 2. VitrixApp -> logo oficial (/logo.jpg)
+        // 3. Meta profile_pic real da CDN do Instagram (se disponível)
+        // 4. Se não disponível na Meta -> null (frontend exibe o monograma nativo do ManyChat)
         let resolvedAvatar = null;
-        if (isOwner) {
+        if (isOwner || otherSender.username === 'yygor02') {
           resolvedAvatar = '/avatar_ygorweb.jpg';
         } else if (isVitrix) {
           resolvedAvatar = '/logo.jpg';
         } else if (cached.profile_pic) {
           resolvedAvatar = cached.profile_pic;
         } else {
-          resolvedAvatar = getFallbackAvatar(otherSender.username);
+          resolvedAvatar = null;
         }
 
         return {
