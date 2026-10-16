@@ -113,13 +113,13 @@ export async function onRequestPost(context) {
     const processed = [];
     const skipped = [];
     let commentsProcessed = 0;
-    const MAX_COMMENTS_PER_RUN = 8; // Processa até 8 leads por ciclo com segurança
+    const MAX_COMMENTS_PER_RUN = 25; // Processa até 25 leads por ciclo com segurança
 
     for (const reel of mediaList) {
       if (commentsProcessed >= MAX_COMMENTS_PER_RUN) break;
 
-      // 3. Busca comentários de cada Reel com verificação de replies de ygorweb
-      const commRes = await fetch(`https://graph.facebook.com/v21.0/${reel.id}/comments?fields=id,text,timestamp,from,username,replies{id,from}&limit=25&access_token=${PAGE_TOKEN}`);
+      // 3. Busca comentários de cada Reel com verificação de replies de ygorweb (até 100 por reel)
+      const commRes = await fetch(`https://graph.facebook.com/v21.0/${reel.id}/comments?fields=id,text,timestamp,from,username,replies{id,from}&limit=100&access_token=${PAGE_TOKEN}`);
       const commData = await commRes.json();
       const comments = commData.data || [];
 
@@ -221,8 +221,8 @@ export async function onRequestPost(context) {
             dmStatus = 'error_network';
           }
 
-          // Intervalo humano de 1.5s entre a DM e o comentário público
-          await sleep(1500);
+          // Intervalo humano seguro entre a DM e o comentário público
+          await sleep(600);
 
           // Resposta pública humanizada no comentário do Reels
           let pubStatus = 'skipped';
@@ -249,7 +249,7 @@ export async function onRequestPost(context) {
           });
 
           commentsProcessed++;
-          await sleep(1500); // Espaçamento suave entre leads
+          await sleep(600); // Espaçamento suave entre leads
         }
       }
     }
