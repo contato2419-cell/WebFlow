@@ -52,12 +52,16 @@ async function getStoredState(env) {
   return null;
 }
 
-// Casamento estrito por palavra inteira (impede falso positivo em 'especialista', 'paulista', etc.)
-function matchesKeywordStrict(text, keyword) {
-  if (!text || !keyword) return false;
-  const cleanKw = keyword.trim().toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const regex = new RegExp(`(?:^|\\s|[.,!?;])${cleanKw}(?:$|\\s|[.,!?;])`, 'i');
-  return regex.test(text.toLowerCase());
+// Casamento estrito por palavra inteira (suporta múltiplas palavras separadas por vírgula)
+function matchesKeywordStrict(text, keywordString) {
+  if (!text || !keywordString) return false;
+  const keywords = String(keywordString).split(/[,;|]/).map(k => k.trim()).filter(Boolean);
+  const lowerText = text.toLowerCase();
+  return keywords.some(kw => {
+    const cleanKw = kw.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(?:^|\\s|[.,!?;])${cleanKw}(?:$|\\s|[.,!?;])`, 'i');
+    return regex.test(lowerText);
+  });
 }
 
 function smartMetaCardSubtitle(str) {

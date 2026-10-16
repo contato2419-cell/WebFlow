@@ -358,7 +358,11 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
       data: {}
     };
 
-    if (type === 'message') {
+    if (type === 'trigger') {
+      newNode.title = 'Gatilho: Comentário no Reels';
+      newNode.type = 'trigger';
+      newNode.data = { keyword: 'LISTA' };
+    } else if (type === 'message') {
       newNode.title = 'Enviar Mensagem';
       newNode.data = { text: 'Olá {{first_name}}! Como posso te ajudar hoje?', buttons: [] };
     } else if (type === 'anti_ban_box') {
@@ -568,6 +572,19 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
               )}
             </div>
 
+            {/* Criar Nova Automação do Zero (Novo Fluxo) */}
+            <button
+              onClick={() => {
+                const newId = createFlow('Nova Automação Instagram', 'instagram');
+                setSelectedFlowId(newId);
+              }}
+              title="Criar Nova Automação do Zero (Novo Fluxo)"
+              className="px-2.5 sm:px-3.5 py-2 sm:py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white flex items-center gap-1.5 shadow-sm transition-all border border-blue-500 shrink-0 cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">+ Nova Automação</span>
+            </button>
+
             {/* Botão de Ligar / Desligar Automação */}
             <button
               onClick={() => updateFlow(currentFlow.id, { active: !currentFlow.active })}
@@ -656,6 +673,15 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
 
         {/* Toolbar de Inserção de Blocos (Padrão ManyChat Responsivo) */}
         <div className="absolute bottom-16 sm:bottom-6 left-1/2 -translate-x-1/2 md:translate-x-0 md:left-auto md:top-5 md:right-6 md:bottom-auto z-20 flex items-center gap-1 sm:gap-1.5 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-800 p-1 sm:p-1.5 rounded-2xl shadow-lg max-w-[95vw] overflow-x-auto scrollbar-none">
+          <button
+            onClick={() => handleAddNode('trigger')}
+            title="Adicionar Gatilho de Comentário (Palavra-Chave)"
+            className="px-2.5 sm:px-3.5 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-100 dark:hover:bg-amber-900 border border-amber-300 dark:border-amber-700 flex items-center gap-1 sm:gap-1.5 transition-colors whitespace-nowrap shadow-xs"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+            <span>+ Gatilho</span>
+          </button>
+
           <button
             onClick={() => handleAddNode('message')}
             title="Adicionar Mensagem"
@@ -1013,6 +1039,83 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
               />
             </div>
 
+            {/* Alternador Dinâmico de Tipo de Bloco */}
+            <div>
+              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1.5">Tipo do Bloco</label>
+              <select
+                value={selectedNode.type}
+                onChange={(e) => {
+                  const newType = e.target.value;
+                  const updatedNodes = currentFlow.nodes.map(n => {
+                    if (n.id === selectedNode.id) {
+                      let newTitle = n.title;
+                      let newData = { ...n.data };
+                      if (newType === 'trigger') {
+                        newTitle = 'Gatilho: Comentário no Reels';
+                        newData = { keyword: n.data?.keyword || 'LISTA' };
+                      } else if (newType === 'follower_gate') {
+                        newTitle = '1ª DM: Convite & Botão Seguidor';
+                        newData = {
+                          title: n.data?.title || 'Me segue ai pra min te enviar ingrato(a) 🚀',
+                          text: n.data?.text || 'Tô postando vídeo assim toda semana! Clica no botão abaixo pra liberar o link 👇',
+                          buttons: n.data?.buttons || [{ id: 'b_follow', title: '✅ Já estou te seguindo!', targetNode: '' }]
+                        };
+                      } else if (newType === 'message') {
+                        newTitle = '2ª DM: Enviar Mensagem';
+                        newData = { text: n.data?.text || 'Aqui está o seu link 🚀', buttons: n.data?.buttons || [] };
+                      } else if (newType === 'action') {
+                        newTitle = 'Ação Automática';
+                        newData = { actions: [{ type: 'add_tag', value: 'lead_qualificado' }] };
+                      } else if (newType === 'delay') {
+                        newTitle = 'Smart Delay';
+                        newData = { delaySeconds: 15, jitter: true };
+                      }
+                      return { ...n, type: newType, title: newTitle, data: newData };
+                    }
+                    return n;
+                  });
+                  updateFlow(currentFlow.id, { nodes: updatedNodes });
+                }}
+                className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="trigger">🎯 Gatilho (Palavra-Chave no Reel)</option>
+                <option value="follower_gate">🔒 1ª DM: Trava de Seguidor</option>
+                <option value="message">💬 DM: Enviar Mensagem</option>
+                <option value="action">⚡ Ação Automática (+Tag)</option>
+                <option value="condition">🔀 Condição Lógica</option>
+                <option value="delay">⏱️ Smart Delay</option>
+              </select>
+            </div>
+
+            {/* Aviso e Atalho Inteligente para Blocos de Ação */}
+            {selectedNode.type === 'action' && (
+              <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 space-y-2.5">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-amber-700 dark:text-amber-300">
+                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>Você adicionou uma Ação Interna (+Tag)</span>
+                </div>
+                <p className="text-[11px] text-amber-800 dark:text-amber-200 leading-relaxed">
+                  Este bloco serve para marcar contatos com tags (ex: <code>+lead_qualificado</code>). Se o que você queria era criar um <strong>Gatilho de Palavra-Chave</strong> (igual ao bloco da LISTA), clique no botão abaixo para transformar:
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const updatedNodes = currentFlow.nodes.map(n => n.id === selectedNode.id ? {
+                      ...n,
+                      type: 'trigger',
+                      title: 'Gatilho: Comentário no Reels',
+                      data: { keyword: 'LISTA' }
+                    } : n);
+                    updateFlow(currentFlow.id, { nodes: updatedNodes });
+                  }}
+                  className="w-full py-2 px-3 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>🎯 Transformar em Gatilho de Palavra-Chave</span>
+                </button>
+              </div>
+            )}
+
             {/* Configurações Específicas da Trava de Seguidor */}
             {selectedNode.type === 'follower_gate' && (
               <div className="space-y-4">
@@ -1273,21 +1376,35 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
             )}
 
             {selectedNode.type === 'trigger' && (
-              <div>
-                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1.5">Palavra-Chave no Reel</label>
-                <input
-                  type="text"
-                  value={selectedNode.data?.keyword || ''}
-                  onChange={(e) => {
-                    const updatedNodes = currentFlow.nodes.map(n => n.id === selectedNode.id ? {
-                      ...n,
-                      data: { ...n.data, keyword: e.target.value.toUpperCase() }
-                    } : n);
-                    updateFlow(currentFlow.id, { nodes: updatedNodes });
-                  }}
-                  className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-mono uppercase"
-                  placeholder="EX: LISTA"
-                />
+              <div className="space-y-3 p-3.5 rounded-xl bg-blue-50/80 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-blue-700 dark:text-blue-300">
+                  <Sparkles className="w-4 h-4 text-blue-600" />
+                  <span>Palavra-Chave de Disparo no Reel</span>
+                </div>
+                <p className="text-[11px] text-blue-800/80 dark:text-blue-200/80 leading-relaxed">
+                  Quando alguém comentar esta palavra no seu post ou Reel, o fluxo começará automaticamente.
+                </p>
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                    Palavra(s)-Chave
+                  </label>
+                  <input
+                    type="text"
+                    value={selectedNode.data?.keyword || ''}
+                    onChange={(e) => {
+                      const updatedNodes = currentFlow.nodes.map(n => n.id === selectedNode.id ? {
+                        ...n,
+                        data: { ...n.data, keyword: e.target.value.toUpperCase() }
+                      } : n);
+                      updateFlow(currentFlow.id, { nodes: updatedNodes });
+                    }}
+                    className="w-full px-3 py-2 rounded-lg bg-white dark:bg-slate-900 border border-blue-300 dark:border-blue-700 text-xs text-slate-900 dark:text-white font-mono uppercase font-bold focus:ring-2 focus:ring-blue-500 shadow-xs"
+                    placeholder="EX: LISTA ou LISTA, QUERO"
+                  />
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1.5 leading-tight">
+                    💡 <strong>Dica:</strong> Você pode adicionar mais de uma palavra separada por vírgula (ex: <code>LISTA, QUERO, LINK</code>).
+                  </p>
+                </div>
               </div>
             )}
 

@@ -58,11 +58,15 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function matchesKeywordStrict(text, keyword) {
-  if (!text || !keyword) return false;
-  const cleanKw = keyword.trim().toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const regex = new RegExp(`(?:^|\\s|[.,!?;])${cleanKw}(?:$|\\s|[.,!?;])`, 'i');
-  return regex.test(text.toLowerCase());
+function matchesKeywordStrict(text, keywordString) {
+  if (!text || !keywordString) return false;
+  const keywords = String(keywordString).split(/[,;|]/).map(k => k.trim()).filter(Boolean);
+  const lowerText = text.toLowerCase();
+  return keywords.some(kw => {
+    const cleanKw = kw.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(?:^|\\s|[.,!?;])${cleanKw}(?:$|\\s|[.,!?;])`, 'i');
+    return regex.test(lowerText);
+  });
 }
 
 function smartMetaCardSubtitle(str) {
