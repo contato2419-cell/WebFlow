@@ -33,9 +33,9 @@ const INITIAL_FLOWS = [
         title: '1ª DM: Convite & Botão Seguidor',
         position: { x: 420, y: 150 },
         data: {
-          title: 'Só libera se seguir @ygorweb 🔒',
-          text: 'So me seguir e apertar no botão pra min não tomar ban, Tô postando vídeo assim toda semana 🚀',
-          subtitle: 'So me seguir e apertar no botão pra min não tomar ban, Tô postando vídeo assim toda semana 🚀',
+          title: 'Me segue ai pra min te enviar ingrato(a) 🚀',
+          text: 'Tô postando vídeo assim toda semana! Clica no botão abaixo pra liberar o link 👇',
+          subtitle: 'Tô postando vídeo assim toda semana! Clica no botão abaixo pra liberar o link 👇',
           buttons: [
             { id: 'b_follow', title: '✅ Já estou te seguindo!', targetNode: 'node_send_link' }
           ],
@@ -267,8 +267,8 @@ export const AppProvider = ({ children }) => {
       const delaySeconds = triggerNode?.data?.delaySeconds || 15;
       const antiBanJitter = triggerNode?.data?.antiBanJitter || 8;
       
-      const gateText = gateNode?.data?.text || gateNode?.data?.subtitle || "So me seguir e apertar no botão pra min não tomar ban, Tô postando vídeo assim toda semana 🚀";
-      const firstDmTitle = gateNode?.data?.title || `Só libera se seguir ${gateNode?.data?.profileHandle || '@ygorweb'} 🔒`;
+      const gateText = gateNode?.data?.text || gateNode?.data?.subtitle || "Tô postando vídeo assim toda semana! Clica no botão abaixo pra liberar o link 👇";
+      const firstDmTitle = gateNode?.data?.title || "Me segue ai pra min te enviar ingrato(a) 🚀";
       const firstDmSubtitle = gateText;
       const firstDmText = gateText;
       const buttonText = gateNode?.data?.buttons?.[0]?.title || "✅ Já estou te seguindo!";
@@ -313,7 +313,7 @@ export const AppProvider = ({ children }) => {
                       ...node,
                       data: {
                         ...node.data,
-                        title: data.state.firstDmTitle || node.data?.title || 'Só libera se seguir @ygorweb 🔒',
+                        title: data.state.firstDmTitle || node.data?.title || 'Me segue ai pra min te enviar ingrato(a) 🚀',
                         text: savedText || node.data?.text,
                         subtitle: savedText || node.data?.subtitle,
                         fallbackText: data.state.travaReminder || node.data?.fallbackText,
@@ -555,8 +555,8 @@ export const AppProvider = ({ children }) => {
       const keyword = triggerNode?.data?.keyword || 'LISTA';
       const delaySeconds = triggerNode?.data?.delaySeconds || 15;
       const antiBanJitter = triggerNode?.data?.antiBanJitter || 8;
-      const gateText = gateNode?.data?.text || gateNode?.data?.subtitle || "So me seguir e apertar no botão pra min não tomar ban, Tô postando vídeo assim toda semana 🚀";
-      const firstDmTitle = gateNode?.data?.title || `Só libera se seguir ${gateNode?.data?.profileHandle || '@ygorweb'} 🔒`;
+      const gateText = gateNode?.data?.text || gateNode?.data?.subtitle || "Tô postando vídeo assim toda semana! Clica no botão abaixo pra liberar o link 👇";
+      const firstDmTitle = gateNode?.data?.title || "Me segue ai pra min te enviar ingrato(a) 🚀";
       const firstDmSubtitle = gateText;
       const firstDmText = gateText;
       const buttonText = gateNode?.data?.buttons?.[0]?.title || "✅ Já estou te seguindo!";

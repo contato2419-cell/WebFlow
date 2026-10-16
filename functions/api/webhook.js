@@ -17,9 +17,9 @@ const DEFAULT_STATE = {
   keyword: 'LISTA',
   delaySeconds: 15,
   antiBanJitter: 8,
-  firstDmTitle: 'Só libera se seguir @ygorweb 🔒',
-  firstDmSubtitle: 'So me seguir e apertar no botão pra min não tomar ban, Tô postando vídeo assim toda semana 🚀',
-  firstDmText: 'So me seguir e apertar no botão pra min não tomar ban, Tô postando vídeo assim toda semana 🚀',
+  firstDmTitle: 'Me segue ai pra min te enviar ingrato(a) 🚀',
+  firstDmSubtitle: 'Tô postando vídeo assim toda semana! Clica no botão abaixo pra liberar o link 👇',
+  firstDmText: 'Tô postando vídeo assim toda semana! Clica no botão abaixo pra liberar o link 👇',
   buttonText: '✅ Já estou te seguindo!',
   finalLinkMessage: `Tá na mão🚀 \nhttps://x.com/Ithielix/status/2109527114760208745\n\nLink do melhor mousepad de 2026 🏆\nhttps://vt.tiktok.com/ZS9UR1CkPgovL-hgiWV/`,
   travaReminder: `Opa! Vi aqui que você ainda não começou a me seguir 👀\n\nDá um pulinho lá no perfil @ygorweb rapidinho, clica em Seguir e aperta no botão de novo que eu já te libero na hora!`
@@ -27,19 +27,21 @@ const DEFAULT_STATE = {
 
 const CF_ACCOUNT_ID = 'be7db94a293732762035a5c23126dfae';
 const CF_KV_ID = '6ffd8aa59e6a43ebaee8c87a7dd5ceb1';
-const CF_TOKEN = '';
 
 async function getStoredState(env) {
-  if (env.WEBFLOW_KV) {
+  if (env && env.WEBFLOW_KV) {
     try {
       const stored = await env.WEBFLOW_KV.get('FLOW_STATE');
       if (stored) return JSON.parse(stored);
     } catch (e) {}
   }
 
+  const token = env?.CLOUDFLARE_API_TOKEN || env?.CF_TOKEN;
+  if (!token) return null;
+
   try {
     const res = await fetch(`https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/storage/kv/namespaces/${CF_KV_ID}/values/FLOW_STATE`, {
-      headers: { 'Authorization': `Bearer ${CF_TOKEN}` }
+      headers: { 'Authorization': `Bearer ${token}` }
     });
     if (res.ok) {
       const text = await res.text();
@@ -56,6 +58,22 @@ function matchesKeywordStrict(text, keyword) {
   const cleanKw = keyword.trim().toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const regex = new RegExp(`(?:^|\\s|[.,!?;])${cleanKw}(?:$|\\s|[.,!?;])`, 'i');
   return regex.test(text.toLowerCase());
+}
+
+function smartMetaCardSubtitle(str) {
+  if (!str) return '';
+  str = str.trim();
+  if (str.length <= 80) return str;
+  // Otimização de segurança: preserva emoji no final substituindo "seu link" por "o link"
+  let opt = str.replace(/\bseu link\b/gi, 'o link').replace(/\s+/g, ' ');
+  if (opt.length <= 80) return opt;
+  // Truncamento seguro que nunca corta par substituto de emoji
+  let sliced = opt.slice(0, 80);
+  const lastCode = sliced.charCodeAt(sliced.length - 1);
+  if (lastCode >= 0xD800 && lastCode <= 0xDBFF) {
+    sliced = sliced.slice(0, -1);
+  }
+  return sliced.trim();
 }
 
 export async function onRequestGet(context) {
@@ -129,9 +147,10 @@ export async function onRequestPost(context) {
             }
 
             // Suporte aos textos configurados pelo usuário
-            const firstDmText = state.firstDmSubtitle || state.firstDmText || "So me seguir e apertar no botão pra min não tomar ban, Tô postando vídeo assim toda semana 🚀";
-            const firstDmTitle = (state.firstDmTitle || "Só libera se seguir @ygorweb 🔒").slice(0, 80);
-            const firstDmSubtitle = firstDmText.slice(0, 80);
+            const firstDmText = state.firstDmSubtitle || state.firstDmText || "Tô postando vídeo assim toda semana! Clica no botão abaixo pra liberar o link 👇";
+            const rawTitle = state.firstDmTitle || "Me segue ai pra min te enviar ingrato(a) 🚀";
+            const firstDmTitle = rawTitle.length <= 80 ? rawTitle : rawTitle.slice(0, 80);
+            const firstDmSubtitle = smartMetaCardSubtitle(firstDmText);
             const buttonText = (state.buttonText || "✅ Já estou te seguindo!").slice(0, 20);
 
             // Envia a Caixinha Interativa (Generic Template) com o botão nativo da Meta
@@ -240,7 +259,7 @@ export async function onRequestPost(context) {
 
           // Caso 1: Usuário enviou a palavra-chave no Direct (ex: "LISTA")
           if (isExactKeyword && !isButtonClicked) {
-            const firstDmText = state.firstDmSubtitle || state.firstDmText || "So me seguir e apertar no botão pra min não tomar ban, Tô postando vídeo assim toda semana 🚀";
+            const firstDmText = state.firstDmSubtitle || state.firstDmText || "Tô postando vídeo assim toda semana! Clica no botão abaixo pra liberar o link 👇";
             const buttonText = (state.buttonText || "✅ Já estou te seguindo!").slice(0, 20);
 
             try {

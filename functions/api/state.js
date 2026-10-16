@@ -3,16 +3,15 @@
 
 const CF_ACCOUNT_ID = 'be7db94a293732762035a5c23126dfae';
 const CF_KV_ID = '6ffd8aa59e6a43ebaee8c87a7dd5ceb1';
-const CF_TOKEN = '';
 
 const DEFAULT_STATE = {
   is_active: false,
   keyword: 'LISTA',
   delaySeconds: 15,
   antiBanJitter: 8,
-  firstDmTitle: 'Só libera se seguir @ygorweb 🔒',
-  firstDmSubtitle: 'So me seguir e apertar no botão pra min não tomar ban, Tô postando vídeo assim toda semana 🚀',
-  firstDmText: 'So me seguir e apertar no botão pra min não tomar ban, Tô postando vídeo assim toda semana 🚀',
+  firstDmTitle: 'Me segue ai pra min te enviar ingrato(a) 🚀',
+  firstDmSubtitle: 'Tô postando vídeo assim toda semana! Clica no botão abaixo pra liberar o link 👇',
+  firstDmText: 'Tô postando vídeo assim toda semana! Clica no botão abaixo pra liberar o link 👇',
   buttonText: '✅ Já estou te seguindo!',
   finalLinkMessage: `Tá na mão🚀 \nhttps://x.com/Ithielix/status/2109527114760208745\n\nLink do melhor mousepad de 2026 🏆\nhttps://vt.tiktok.com/ZS9UR1CkPgovL-hgiWV/`,
   travaReminder: `Opa! Vi aqui que você ainda não começou a me seguir 👀\n\nDá um pulinho lá no perfil @ygorweb rapidinho, clica em Seguir e aperta no botão de novo que eu já te libero na hora!`
@@ -27,16 +26,19 @@ const CORS_HEADERS = {
 };
 
 async function getStoredState(env) {
-  if (env.WEBFLOW_KV) {
+  if (env && env.WEBFLOW_KV) {
     try {
       const stored = await env.WEBFLOW_KV.get('FLOW_STATE');
       if (stored) return JSON.parse(stored);
     } catch (e) {}
   }
 
+  const token = env?.CLOUDFLARE_API_TOKEN || env?.CF_TOKEN;
+  if (!token) return null;
+
   try {
     const res = await fetch(`https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/storage/kv/namespaces/${CF_KV_ID}/values/FLOW_STATE`, {
-      headers: { 'Authorization': `Bearer ${CF_TOKEN}` }
+      headers: { 'Authorization': `Bearer ${token}` }
     });
     if (res.ok) {
       const text = await res.text();
@@ -50,17 +52,20 @@ async function getStoredState(env) {
 async function putStoredState(env, stateObj) {
   const jsonStr = JSON.stringify(stateObj);
 
-  if (env.WEBFLOW_KV) {
+  if (env && env.WEBFLOW_KV) {
     try {
       await env.WEBFLOW_KV.put('FLOW_STATE', jsonStr);
     } catch (e) {}
   }
 
+  const token = env?.CLOUDFLARE_API_TOKEN || env?.CF_TOKEN;
+  if (!token) return;
+
   try {
     await fetch(`https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/storage/kv/namespaces/${CF_KV_ID}/values/FLOW_STATE`, {
       method: 'PUT',
       headers: {
-        'Authorization': `Bearer ${CF_TOKEN}`,
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'text/plain'
       },
       body: jsonStr

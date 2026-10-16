@@ -887,7 +887,7 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
                     <div className="space-y-2">
                       <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 text-[10px] text-indigo-700 dark:text-indigo-300 font-bold">
                         <UserCheck className="w-3 h-3 text-indigo-600" />
-                        <span>{node.data?.title || '🔒 Só libera se seguir @ygorweb'}</span>
+                        <span>{node.data?.title || 'Me segue ai pra min te enviar ingrato(a) 🚀'}</span>
                       </div>
                       <p className="text-[11px] text-slate-600 dark:text-slate-300 line-clamp-3 bg-slate-50 dark:bg-slate-800/80 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 leading-relaxed whitespace-pre-line">
                         {node.data?.text || node.data?.subtitle || 'Sem texto'}
@@ -1050,7 +1050,7 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
                   </label>
                   <input
                     type="text"
-                    value={selectedNode.data?.title || 'Só libera se seguir @ygorweb 🔒'}
+                    value={selectedNode.data?.title || 'Me segue ai pra min te enviar ingrato(a) 🚀'}
                     onChange={(e) => {
                       const updatedNodes = currentFlow.nodes.map(n => n.id === selectedNode.id ? {
                         ...n,
@@ -1059,14 +1059,24 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
                       updateFlow(currentFlow.id, { nodes: updatedNodes });
                     }}
                     className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-semibold"
-                    placeholder="Ex: Só libera se seguir @ygorweb 🔒"
+                    placeholder="Ex: Me segue ai pra min te enviar ingrato(a) 🚀"
                   />
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    Mensagem de Convite para Seguir (Texto da DM)
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                      Mensagem de Convite para Seguir (Texto da DM)
+                    </label>
+                    {(() => {
+                      const len = (selectedNode.data?.text || selectedNode.data?.subtitle || '').length;
+                      return (
+                        <span className={`text-[10px] font-bold ${len > 80 ? 'text-amber-500 animate-pulse' : 'text-emerald-500'}`}>
+                          {len}/80 chars {len > 80 ? '⚠️ (Meta corta em 80)' : '✅'}
+                        </span>
+                      );
+                    })()}
+                  </div>
                   <textarea
                     rows={4}
                     value={selectedNode.data?.text || selectedNode.data?.subtitle || ''}
@@ -1080,6 +1090,11 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
                     }}
                     className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white leading-relaxed font-sans"
                   />
+                  {((selectedNode.data?.text || selectedNode.data?.subtitle || '').length > 80) && (
+                    <p className="text-[10px] text-amber-500 mt-1 leading-tight">
+                      ⚠️ Dica: A Meta corta subtítulos de cartões em 80 caracteres. Encurte 1 ou 2 letras para que emojis no final não sejam cortados!
+                    </p>
+                  )}
                 </div>
 
                 <div>
