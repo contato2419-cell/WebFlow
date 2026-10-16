@@ -75,6 +75,45 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
     };
   }, [flowDropdownOpen]);
 
+  // Auto-recuperação: Garante que todo bloco do tipo 'follower_gate' possua o botão de confirmação do seguidor
+  useEffect(() => {
+    if (!currentFlow?.nodes) return;
+    let needsRepair = false;
+    const repairedNodes = currentFlow.nodes.map(n => {
+      if (n.type === 'follower_gate') {
+        const hasValidButton = Array.isArray(n.data?.buttons) && n.data.buttons.length > 0;
+        if (!hasValidButton) {
+          needsRepair = true;
+          // Verifica se já existia uma conexão saindo deste nó para ligar ao botão
+          const existingEdge = (currentFlow.edges || []).find(e => e.from === n.id);
+          const targetId = existingEdge?.to || '';
+          const btnId = 'b_follow_' + n.id;
+          return {
+            ...n,
+            data: {
+              ...n.data,
+              buttons: [{ id: btnId, title: '✅ Já estou te seguindo!', targetNode: targetId }]
+            }
+          };
+        }
+      }
+      return n;
+    });
+
+    if (needsRepair) {
+      // Se havia ligação saindo de 'output', redireciona para a porta do botão de verificação
+      const repairedEdges = (currentFlow.edges || []).map(e => {
+        const sourceNode = currentFlow.nodes.find(n => n.id === e.from);
+        if (sourceNode?.type === 'follower_gate' && (!e.port || e.port === 'output')) {
+          const btnId = 'b_follow_' + sourceNode.id;
+          return { ...e, port: btnId };
+        }
+        return e;
+      });
+      updateFlow(currentFlow.id, { nodes: repairedNodes, edges: repairedEdges });
+    }
+  }, [currentFlow?.id, currentFlow?.nodes]);
+
   if (!currentFlow) return null;
 
   // Iniciar ligação visual a partir de um handle ou botão
@@ -693,6 +732,15 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
           </button>
 
           <button
+            onClick={() => handleAddNode('follower_gate')}
+            title="Adicionar 1ª DM: Trava de Seguidor"
+            className="px-3 py-2 rounded-xl text-xs font-bold text-indigo-300 bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/40 flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer"
+          >
+            <UserCheck className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+            <span>+ Trava Seguidor</span>
+          </button>
+
+          <button
             onClick={() => handleAddNode('message')}
             title="Adicionar Mensagem"
             className="px-3 py-2 rounded-xl text-xs font-semibold text-slate-200 hover:bg-slate-800 flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer"
@@ -929,25 +977,32 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
                         {node.data?.text || node.data?.subtitle || 'Sem texto'}
                       </p>
 
-                      {node.data?.buttons && node.data.buttons.length > 0 && (
-                        <div className="space-y-1.5 pt-1">
-                          {node.data.buttons.map((btn, bidx) => (
-                            <div key={bidx} className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-[11px] text-indigo-700 dark:text-indigo-300 font-bold">
-                              <span>{btn.title}</span>
-                              {/* Conector Interativo de Saída do Botão */}
-                              <button
-                                type="button"
-                                onClick={(e) => handleStartConnect(node.id, btn.id || ('b_' + bidx), e)}
-                                onMouseDown={(e) => handleStartConnect(node.id, btn.id || ('b_' + bidx), e)}
-                                title="Clique ou arraste para ligar este botão a outro bloco"
-                                className="w-4 h-4 rounded-full bg-indigo-500 hover:bg-indigo-600 hover:scale-125 transition-all flex items-center justify-center cursor-crosshair border border-white dark:border-slate-800 shadow-xs"
-                              >
-                                <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                      {/* Botão de Confirmação do Seguidor no Card do Canvas */}
+                      {(() => {
+                        const buttons = (node.data?.buttons && node.data.buttons.length > 0)
+                          ? node.data.buttons
+                          : [{ id: 'b_follow_' + node.id, title: '✅ Já estou te seguindo!', targetNode: '' }];
+
+                        return (
+                          <div className="space-y-1.5 pt-1">
+                            {buttons.map((btn, bidx) => (
+                              <div key={bidx} className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-[11px] text-indigo-700 dark:text-indigo-300 font-bold">
+                                <span>{btn.title}</span>
+                                {/* Conector Interativo de Saída do Botão */}
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleStartConnect(node.id, btn.id || ('b_' + bidx), e)}
+                                  onMouseDown={(e) => handleStartConnect(node.id, btn.id || ('b_' + bidx), e)}
+                                  title="Clique ou arraste para ligar este botão a outro bloco"
+                                  className="w-4 h-4 rounded-full bg-indigo-500 hover:bg-indigo-600 hover:scale-125 transition-all flex items-center justify-center cursor-crosshair border border-white dark:border-slate-800 shadow-xs"
+                                >
+                                  <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
 
@@ -1065,10 +1120,17 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
                         newData = { keyword: n.data?.keyword || 'LISTA' };
                       } else if (newType === 'follower_gate') {
                         newTitle = '1ª DM: Convite & Botão Seguidor';
+                        const existingButtons = (n.data?.buttons && n.data.buttons.length > 0)
+                          ? n.data.buttons
+                          : [{ id: 'b_follow_' + Date.now(), title: '✅ Já estou te seguindo!', targetNode: '' }];
                         newData = {
                           title: n.data?.title || 'Me segue ai pra min te enviar ingrato(a) 🚀',
                           text: n.data?.text || 'Tô postando vídeo assim toda semana! Clica no botão abaixo pra liberar o link 👇',
-                          buttons: n.data?.buttons || [{ id: 'b_follow', title: '✅ Já estou te seguindo!', targetNode: '' }]
+                          subtitle: n.data?.subtitle || n.data?.text || 'Tô postando vídeo assim toda semana! Clica no botão abaixo pra liberar o link 👇',
+                          fallbackText: n.data?.fallbackText || 'Opa! Vi aqui que você ainda não começou a me seguir 👀 Dá um pulinho lá no perfil @ygorweb rapidinho, clica em Seguir e aperta no botão de novo que eu já te libero na hora!',
+                          profileHandle: '@ygorweb',
+                          requireFollow: true,
+                          buttons: existingButtons
                         };
                       } else if (newType === 'message') {
                         newTitle = '2ª DM: Enviar Mensagem';
@@ -1229,53 +1291,85 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
-                    Botão de Confirmação do Seguidor
-                  </label>
-                  {selectedNode.data?.buttons?.map((btn, bidx) => {
-                    const portId = btn.id || ('b_' + bidx);
-                    const connectedEdge = (currentFlow.edges || []).find(e => e.from === selectedNode.id && e.port === portId);
-                    const targetNodeId = btn.targetNode || connectedEdge?.to || '';
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                      Botão de Confirmação do Seguidor
+                    </label>
+                    <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold">Obrigatório no Instagram</span>
+                  </div>
+
+                  {(() => {
+                    const currentButtons = (selectedNode.data?.buttons && selectedNode.data.buttons.length > 0)
+                      ? selectedNode.data.buttons
+                      : [{ id: 'b_follow_' + selectedNode.id, title: '✅ Já estou te seguindo!', targetNode: '' }];
 
                     return (
-                      <div key={portId} className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <label className="text-[10px] text-slate-500 font-bold uppercase">Texto do Botão</label>
-                          <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold">Verificação</span>
-                        </div>
-                        <input
-                          type="text"
-                          value={btn.title}
-                          onChange={(e) => {
-                            const newButtons = selectedNode.data.buttons.map(b => b.id === btn.id ? { ...b, title: e.target.value } : b);
-                            const updatedNodes = currentFlow.nodes.map(n => n.id === selectedNode.id ? { ...n, data: { ...n.data, buttons: newButtons } } : n);
-                            updateFlow(currentFlow.id, { nodes: updatedNodes });
-                          }}
-                          className="w-full px-2 py-1.5 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-semibold"
-                        />
-                        <div>
-                          <label className="text-[10px] text-slate-500 font-medium block mb-1">🔗 Se já seguiu, ir para o bloco:</label>
-                          <select
-                            value={targetNodeId}
-                            onChange={(e) => {
-                              const destId = e.target.value;
-                              const newButtons = selectedNode.data.buttons.map(b => b.id === btn.id ? { ...b, targetNode: destId } : b);
-                              const updatedNodes = currentFlow.nodes.map(n => n.id === selectedNode.id ? { ...n, data: { ...n.data, buttons: newButtons } } : n);
-                              const filteredEdges = (currentFlow.edges || []).filter(ed => !(ed.from === selectedNode.id && ed.port === portId));
-                              const newEdges = destId ? [...filteredEdges, { from: selectedNode.id, to: destId, port: portId }] : filteredEdges;
-                              updateFlow(currentFlow.id, { nodes: updatedNodes, edges: newEdges });
+                      <div className="space-y-3">
+                        {currentButtons.map((btn, bidx) => {
+                          const portId = btn.id || ('b_' + bidx);
+                          const connectedEdge = (currentFlow.edges || []).find(e => e.from === selectedNode.id && e.port === portId);
+                          const targetNodeId = btn.targetNode || connectedEdge?.to || '';
+
+                          return (
+                            <div key={portId} className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-2">
+                              <div className="flex items-center justify-between">
+                                <label className="text-[10px] text-slate-500 font-bold uppercase">Texto do Botão</label>
+                                <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold">Verificação</span>
+                              </div>
+                              <input
+                                type="text"
+                                value={btn.title}
+                                onChange={(e) => {
+                                  const newButtons = currentButtons.map(b => b.id === btn.id ? { ...b, title: e.target.value } : b);
+                                  const updatedNodes = currentFlow.nodes.map(n => n.id === selectedNode.id ? { ...n, data: { ...n.data, buttons: newButtons } } : n);
+                                  updateFlow(currentFlow.id, { nodes: updatedNodes });
+                                }}
+                                className="w-full px-2 py-1.5 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-semibold"
+                              />
+                              <div>
+                                <label className="text-[10px] text-slate-500 font-medium block mb-1">🔗 Se já seguiu, ir para o bloco:</label>
+                                <select
+                                  value={targetNodeId}
+                                  onChange={(e) => {
+                                    const destId = e.target.value;
+                                    const newButtons = currentButtons.map(b => b.id === btn.id ? { ...b, targetNode: destId } : b);
+                                    const updatedNodes = currentFlow.nodes.map(n => n.id === selectedNode.id ? { ...n, data: { ...n.data, buttons: newButtons } } : n);
+                                    const filteredEdges = (currentFlow.edges || []).filter(ed => !(ed.from === selectedNode.id && ed.port === portId));
+                                    const newEdges = destId ? [...filteredEdges, { from: selectedNode.id, to: destId, port: portId }] : filteredEdges;
+                                    updateFlow(currentFlow.id, { nodes: updatedNodes, edges: newEdges });
+                                  }}
+                                  className="w-full px-2 py-1.5 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium"
+                                >
+                                  <option value="">(Nenhum - Arraste a linha ou selecione)</option>
+                                  {currentFlow.nodes.filter(n => n.id !== selectedNode.id).map(n => (
+                                    <option key={n.id} value={n.id}>➜ {n.title || n.type} ({n.id})</option>
+                                  ))}
+                                </select>
+                              </div>
+                            </div>
+                          );
+                        })}
+
+                        {(!selectedNode.data?.buttons || selectedNode.data.buttons.length === 0) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const defaultButton = { id: 'b_follow_' + Date.now(), title: '✅ Já estou te seguindo!', targetNode: '' };
+                              const updatedNodes = currentFlow.nodes.map(n => n.id === selectedNode.id ? {
+                                ...n,
+                                data: { ...n.data, buttons: [defaultButton] }
+                              } : n);
+                              updateFlow(currentFlow.id, { nodes: updatedNodes });
                             }}
-                            className="w-full px-2 py-1.5 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white font-medium"
+                            className="w-full py-2 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer"
                           >
-                            <option value="">(Nenhum - Arraste a linha ou selecione)</option>
-                            {currentFlow.nodes.filter(n => n.id !== selectedNode.id).map(n => (
-                              <option key={n.id} value={n.id}>➜ {n.title || n.type} ({n.id})</option>
-                            ))}
-                          </select>
-                        </div>
+                            <Plus className="w-4 h-4" />
+                            Restaurar Botão de Confirmação
+                          </button>
+                        )}
                       </div>
                     );
-                  })}
+                  })()}
                 </div>
               </div>
             )}

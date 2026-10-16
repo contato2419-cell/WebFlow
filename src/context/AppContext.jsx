@@ -263,7 +263,12 @@ export const AppProvider = ({ children }) => {
       const gateNode = instaFlow?.nodes?.find(n => n.type === 'follower_gate');
       const linkNode = instaFlow?.nodes?.find(n => n.type === 'message' || n.id === 'node_send_link');
 
-      const keyword = triggerNode?.data?.keyword || 'LISTA';
+      // Coleta todas as palavras-chave dos gatilhos do fluxo (ex: LISTA, REA)
+      const triggerKeywords = (instaFlow?.nodes || [])
+        .filter(n => n.type === 'trigger' && n.data?.keyword)
+        .map(n => n.data.keyword.trim())
+        .filter(Boolean);
+      const keyword = triggerKeywords.length > 0 ? triggerKeywords.join(', ') : (triggerNode?.data?.keyword || 'LISTA');
       const delaySeconds = triggerNode?.data?.delaySeconds || 15;
       const antiBanJitter = triggerNode?.data?.antiBanJitter || 8;
       
