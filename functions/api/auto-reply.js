@@ -30,16 +30,25 @@ const DEFAULT_STATE = {
 const CF_ACCOUNT_ID = 'be7db94a293732762035a5c23126dfae';
 const CF_KV_ID = '6ffd8aa59e6a43ebaee8c87a7dd5ceb1';
 
+let inMemoryStateCache = null;
+
 async function getStoredState(env) {
+  if (inMemoryStateCache) return inMemoryStateCache;
+
   if (env && env.WEBFLOW_KV) {
     try {
       const stored = await env.WEBFLOW_KV.get('FLOW_STATE');
-      if (stored) return JSON.parse(stored);
-    } catch (e) {}
+      if (stored) {
+        inMemoryStateCache = JSON.parse(stored);
+        return inMemoryStateCache;
+      }
+    } catch (e) {
+      console.warn('Erro ao ler do KV em auto-reply:', e.message);
+    }
   }
 
   const token = env?.CLOUDFLARE_API_TOKEN || env?.CF_TOKEN;
-  if (!token) return null;
+  if (!token) return inMemoryStateCache;
 
   try {
     const res = await fetch(`https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/storage/kv/namespaces/${CF_KV_ID}/values/FLOW_STATE`, {
@@ -47,11 +56,46 @@ async function getStoredState(env) {
     });
     if (res.ok) {
       const text = await res.text();
-      return JSON.parse(text);
+      inMemoryStateCache = JSON.parse(text);
+      return inMemoryStateCache;
     }
   } catch (e) {}
 
-  return null;
+  return inMemoryStateCache;
+}
+
+async function putStoredState(env, stateObj) {
+  inMemoryStateCache = stateObj;
+  const jsonStr = JSON.stringify(stateObj);
+
+  if (env && env.WEBFLOW_KV) {
+    try {
+      // PROTEÇÃO DE COTA: se for idêntico, zero PUTs gastos!
+      const currentRaw = await env.WEBFLOW_KV.get('FLOW_STATE');
+      if (currentRaw === jsonStr) {
+        return;
+      }
+      await env.WEBFLOW_KV.put('FLOW_STATE', jsonStr);
+      return;
+    } catch (e) {
+      console.warn('KV temporariamente limitado ou indisponível em auto-reply:', e.message);
+      return;
+    }
+  }
+
+  const token = env?.CLOUDFLARE_API_TOKEN || env?.CF_TOKEN;
+  if (!token) return;
+
+  try {
+    await fetch(`https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/storage/kv/namespaces/${CF_KV_ID}/values/FLOW_STATE`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'text/plain'
+      },
+      body: jsonStr
+    });
+  } catch (e) {}
 }
 
 function sleep(ms) {
@@ -149,13 +193,37 @@ export async function onRequestPost(context) {
     const rawBtn = body.buttonText || state.buttonText || '✅ Já estou seguindo';
     const buttonText = formatMetaButtonTitle(rawBtn);
 
-    // 2. Busca os Reels mais recentes (até 8 mídias) para varredura completa
-    const mediaRes = await fetch(`https://graph.facebook.com/v21.0/${IG_USER_ID}/media?fields=id,caption,media_type,timestamp&limit=8&access_token=${PAGE_TOKEN}`);
+    // 2. Busca mídias recentes com contagem de comentários para economizar subrequests
+    const mediaRes = await fetch(`https://graph.facebook.com/v21.0/${IG_USER_ID}/media?fields=id,caption,media_type,timestamp,comments_count&limit=5&access_token=${PAGE_TOKEN}`);
     const mediaData = await mediaRes.json();
     const mediaList = mediaData.data || [];
     
     if (mediaList.length === 0) {
-      return new Response(JSON.stringify({ success: false, message: 'Nenhuma mídia encontrada na conta' }), {
+      return new Response(JSON.stringify({ success: true, processedCount: 0, message: 'Nenhuma mídia encontrada na conta' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+      });
+    }
+
+    // Filtra apenas mídias que possuem comentários reais (economiza subrequests no Cloudflare)
+    const activeReels = mediaList.filter(m => (m.comments_count || 0) > 0).slice(0, 3);
+    const targetReels = activeReels.length > 0 ? activeReels : mediaList.slice(0, 1);
+
+    // Verifica resfriamento anti-spam temporário do Instagram (limite horário da Meta)
+    const isForced = Boolean(body.force);
+    const cooldownUntil = isForced ? 0 : (state.metaCooldownUntil || 0);
+    if (!isForced && Date.now() < cooldownUntil) {
+      const waitMinutes = Math.ceil((cooldownUntil - Date.now()) / 60000);
+      return new Response(JSON.stringify({
+        success: true,
+        rateLimited: true,
+        cooldownMinutes: waitMinutes,
+        message: `Instagram em resfriamento anti-spam. O envio será retomado em ${waitMinutes} min para segurança da conta.`,
+        processedCount: 0,
+        hasMore: false,
+        processed: [],
+        skipped: []
+      }), {
         status: 200,
         headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
       });
@@ -164,22 +232,26 @@ export async function onRequestPost(context) {
     const processed = [];
     const skipped = [];
     let commentsProcessed = 0;
-    const MAX_COMMENTS_PER_RUN = 30; // Processa até 30 leads por ciclo para respeitar limites do Cloudflare Worker
+    const MAX_COMMENTS_PER_RUN = 10;
     let hasMorePending = false;
+    let isRateLimited = false;
+    let lastMetaError = null;
+    let subrequestBudget = 25; // Orçamento estrito para nunca estourar o limite de 50 do Cloudflare Worker
 
-    for (const reel of mediaList) {
-      if (commentsProcessed >= MAX_COMMENTS_PER_RUN) {
-        hasMorePending = true;
+    for (const reel of targetReels) {
+      if (commentsProcessed >= MAX_COMMENTS_PER_RUN || isRateLimited || subrequestBudget <= 3) {
+        if (!isRateLimited && commentsProcessed >= MAX_COMMENTS_PER_RUN) hasMorePending = true;
         break;
       }
 
-      // Varredura paginada: percorre até 25 páginas (~2.500 comentários) por Reel
-      let commentsUrl = `https://graph.facebook.com/v21.0/${reel.id}/comments?fields=id,text,timestamp,from,username,replies{id,from}&limit=100&access_token=${PAGE_TOKEN}`;
+      // Varredura focada: 1 ou 2 páginas dos comentários mais recentes
+      let commentsUrl = `https://graph.facebook.com/v21.0/${reel.id}/comments?fields=id,text,timestamp,from,username,replies{id,from}&limit=50&access_token=${PAGE_TOKEN}`;
       let pageCount = 0;
-      const MAX_PAGES_PER_REEL = 25;
+      const MAX_PAGES_PER_REEL = 2;
 
-      while (commentsUrl && pageCount < MAX_PAGES_PER_REEL && commentsProcessed < MAX_COMMENTS_PER_RUN) {
+      while (commentsUrl && pageCount < MAX_PAGES_PER_REEL && commentsProcessed < MAX_COMMENTS_PER_RUN && !isRateLimited && subrequestBudget > 2) {
         pageCount++;
+        subrequestBudget--;
         const commRes = await fetch(commentsUrl);
         const commData = await commRes.json();
         const comments = commData.data || [];
@@ -187,7 +259,7 @@ export async function onRequestPost(context) {
         if (comments.length === 0) break;
 
         for (const comment of comments) {
-          if (commentsProcessed >= MAX_COMMENTS_PER_RUN) {
+          if (commentsProcessed >= MAX_COMMENTS_PER_RUN || subrequestBudget <= 2) {
             hasMorePending = true;
             break;
           }
@@ -197,7 +269,7 @@ export async function onRequestPost(context) {
 
           if (!user || user === 'ygorweb') continue;
 
-          // REGRA DE SEGURANÇA: Casamento flexível para palavra-chave (suporta emojis, pontuações e acentos)
+          // REGRA DE SEGURANÇA: Casamento flexível para palavra-chave
           if (matchesKeyword(text, keyword)) {
             const replies = comment.replies?.data || [];
             const alreadyHasYgorReply = replies.some(r => r.from?.username === 'ygorweb');
@@ -221,12 +293,46 @@ export async function onRequestPost(context) {
                 targetDelay, 
                 reason: 'waiting_human_delay' 
               });
-              continue; // Deixa para responder quando o delay for atingido!
+              continue;
             }
 
             let dmStatus = 'skipped';
 
-            // 1ª DM: Envia a Caixinha Interativa (Generic Template) com o botão nativo da Meta
+            // Resolução Dinâmica de Esteiras e Blocos no DAG
+            let branchTitle = firstDmTitle;
+            let branchSubtitle = firstDmSubtitle;
+            let branchButtonText = buttonText;
+            let branchPayload = "FOLLOW_CONFIRMED";
+
+            const flowsList = state.flows || body.flows;
+            if (Array.isArray(flowsList)) {
+              const activeInstaFlow = flowsList.find(f => f.channel === 'instagram' && f.active);
+              if (activeInstaFlow && Array.isArray(activeInstaFlow.nodes)) {
+                const matchedTrig = activeInstaFlow.nodes.find(n => n.type === 'trigger' && matchesKeyword(text, n.data?.keyword));
+                if (matchedTrig) {
+                  const edgeFromTrig = (activeInstaFlow.edges || []).find(e => e.from === matchedTrig.id);
+                  const connectedGate = edgeFromTrig 
+                    ? activeInstaFlow.nodes.find(n => n.id === edgeFromTrig.to && n.type === 'follower_gate')
+                    : null;
+                  if (connectedGate) {
+                    const rawT = connectedGate.data?.title || branchTitle;
+                    const rawSub = connectedGate.data?.text || connectedGate.data?.subtitle || branchSubtitle;
+                    const btn = connectedGate.data?.buttons?.[0];
+                    const rawB = btn?.title || branchButtonText;
+                    const targetNodeId = btn?.targetNode || '';
+
+                    branchTitle = rawT.length <= 80 ? rawT : rawT.slice(0, 80);
+                    branchSubtitle = smartMetaCardSubtitle(rawSub);
+                    branchButtonText = formatMetaButtonTitle(rawB);
+                    if (targetNodeId) {
+                      branchPayload = `FOLLOW_CONFIRMED:${targetNodeId}`;
+                    }
+                  }
+                }
+              }
+            }
+
+            // 1ª DM: Envia a Caixinha Interativa (Generic Template)
             const caixinhaPayload = {
               recipient: { comment_id: comment.id },
               message: {
@@ -236,13 +342,13 @@ export async function onRequestPost(context) {
                     template_type: "generic",
                     elements: [
                       {
-                        title: firstDmTitle,
-                        subtitle: firstDmSubtitle,
+                        title: branchTitle,
+                        subtitle: branchSubtitle,
                         buttons: [
                           {
                             type: "postback",
-                            title: buttonText,
-                            payload: "FOLLOW_CONFIRMED"
+                            title: branchButtonText,
+                            payload: branchPayload
                           }
                         ]
                       }
@@ -262,7 +368,14 @@ export async function onRequestPost(context) {
               if (dmJson.message_id) {
                 dmStatus = 'success_interactive_card';
               } else {
-                // Fallback de texto com Quick Reply ou texto direto
+                const subcode = dmJson.error?.error_subcode;
+                if (subcode === 2534001 || subcode === 2534066) {
+                  isRateLimited = true;
+                  lastMetaError = dmJson.error?.message;
+                  break; // Pausa imediata para respeitar resfriamento anti-spam da Meta
+                }
+
+                // Fallback de texto com Quick Reply
                 const fallbackRes = await fetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${PAGE_TOKEN}`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
@@ -281,18 +394,25 @@ export async function onRequestPost(context) {
                   })
                 });
                 const fallbackJson = await fallbackRes.json();
-                dmStatus = fallbackJson.message_id ? 'success_quick_reply' : 'failed';
+                if (fallbackJson.message_id) {
+                  dmStatus = 'success_quick_reply';
+                } else {
+                  if (fallbackJson.error?.error_subcode === 2534001 || fallbackJson.error?.error_subcode === 2534066) {
+                    isRateLimited = true;
+                    lastMetaError = fallbackJson.error?.message;
+                    break;
+                  }
+                  dmStatus = 'failed';
+                }
               }
             } catch (e) {
               dmStatus = 'error_network';
             }
 
-            // Intervalo humano seguro entre a DM e o comentário público
-            await sleep(400);
-
-            // Resposta pública humanizada no comentário do Reels (APENAS se a DM teve sucesso!)
+            // APENAS processa resposta pública se a DM teve sucesso real!
             let pubStatus = 'skipped';
             if (dmStatus === 'success_interactive_card' || dmStatus === 'success_quick_reply') {
+              await sleep(600);
               try {
                 const replyText = PUBLIC_REPLIES[Math.floor(Math.random() * PUBLIC_REPLIES.length)];
                 const pubRes = await fetch(`https://graph.facebook.com/v21.0/${comment.id}/replies?access_token=${PAGE_TOKEN}`, {
@@ -305,28 +425,65 @@ export async function onRequestPost(context) {
               } catch (e) {
                 pubStatus = 'error';
               }
+
+              processed.push({
+                commentId: comment.id,
+                reelId: reel.id,
+                user,
+                text,
+                dmStatus,
+                pubStatus
+              });
+              commentsProcessed++;
+              await sleep(1500); // 1.5s entre envios reais para não sobrecarregar
+            } else {
+              skipped.push({
+                commentId: comment.id,
+                reelId: reel.id,
+                user,
+                reason: isRateLimited ? 'meta_rate_limited' : 'dm_failed'
+              });
             }
 
-            processed.push({
-              commentId: comment.id,
-              reelId: reel.id,
-              user,
-              text,
-              dmStatus,
-              pubStatus
-            });
-
-            commentsProcessed++;
-            await sleep(500); // Espaçamento suave anti-ban entre envios
+            if (isRateLimited) break;
           }
         }
 
+        if (isRateLimited) break;
         commentsUrl = commData.paging?.next || null;
       }
     }
 
+    // Se detectou resfriamento anti-spam da Meta, registra cooldown de 15 minutos no KV
+    if (isRateLimited) {
+      const cooldownMinutes = 15;
+      const metaCooldownUntil = Date.now() + cooldownMinutes * 60 * 1000;
+      await putStoredState(env, { ...state, metaCooldownUntil });
+
+      return new Response(JSON.stringify({
+        success: true,
+        rateLimited: true,
+        cooldownMinutes,
+        message: `A Meta ativou resfriamento temporário anti-spam (${lastMetaError || 'Aguarde alguns minutos'}). O envio foi pausado para proteger sua conta.`,
+        mediaCount: mediaList.length,
+        processedCount: processed.length,
+        hasMore: false,
+        processed,
+        skipped
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+      });
+    }
+
+    // Se saiu do cooldown com sucesso ou foi liberado, limpa a flag no KV
+    if (state.metaCooldownUntil) {
+      await putStoredState(env, { ...state, metaCooldownUntil: 0 });
+    }
+
     return new Response(JSON.stringify({
       success: true,
+      rateLimited: false,
       mediaCount: mediaList.length,
       processedCount: processed.length,
       hasMore: hasMorePending,

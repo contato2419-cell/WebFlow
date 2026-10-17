@@ -675,7 +675,7 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
                   alert('O canal WhatsApp está desconectado. Conecte seu número na aba Canais Meta para disparar automações no WhatsApp.');
                   return;
                 }
-                processLiveAutomation();
+                processLiveAutomation(true);
               }}
               disabled={isRunningAutomation}
               className={`px-2.5 sm:px-3.5 py-2 sm:py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm border shrink-0 ${
@@ -713,7 +713,7 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
 
         {/* Status Flutuante Centralizado (Toast Não-Intrusivo que NUNCA sobrepõe botões) */}
         {(automationStatus || saveStatus) && (
-          <div className="absolute top-16 sm:top-20 left-1/2 -translate-x-1/2 z-30 pointer-events-none flex flex-col items-center gap-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="absolute top-20 sm:top-24 left-1/2 -translate-x-1/2 z-30 pointer-events-none flex flex-col items-center gap-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
             {automationStatus && (
               <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-white/95 dark:bg-slate-900/95 border border-emerald-300 dark:border-emerald-700/80 px-3.5 py-1.5 rounded-full shadow-lg backdrop-blur-md flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>

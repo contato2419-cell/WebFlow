@@ -25,16 +25,26 @@ const CORS_HEADERS = {
   'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0'
 };
 
+// Cache em memória para caso o KV esteja temporariamente bloqueado (429)
+let inMemoryStateCache = null;
+
 async function getStoredState(env) {
+  if (inMemoryStateCache) return inMemoryStateCache;
+
   if (env && env.WEBFLOW_KV) {
     try {
       const stored = await env.WEBFLOW_KV.get('FLOW_STATE');
-      if (stored) return JSON.parse(stored);
-    } catch (e) {}
+      if (stored) {
+        inMemoryStateCache = JSON.parse(stored);
+        return inMemoryStateCache;
+      }
+    } catch (e) {
+      console.warn('Erro ao ler do KV (usando cache local se disponível):', e.message);
+    }
   }
 
   const token = env?.CLOUDFLARE_API_TOKEN || env?.CF_TOKEN;
-  if (!token) return null;
+  if (!token) return inMemoryStateCache;
 
   try {
     const res = await fetch(`https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/storage/kv/namespaces/${CF_KV_ID}/values/FLOW_STATE`, {
@@ -42,20 +52,32 @@ async function getStoredState(env) {
     });
     if (res.ok) {
       const text = await res.text();
-      return JSON.parse(text);
+      inMemoryStateCache = JSON.parse(text);
+      return inMemoryStateCache;
     }
   } catch (e) {}
 
-  return null;
+  return inMemoryStateCache;
 }
 
 async function putStoredState(env, stateObj) {
+  inMemoryStateCache = stateObj;
   const jsonStr = JSON.stringify(stateObj);
 
   if (env && env.WEBFLOW_KV) {
     try {
+      // PROTEÇÃO DE COTA: A leitura no KV é de 100.000/dia grátis.
+      // Se o estado for idêntico ao já gravado, NÃO gasta cota de gravação (1.000/dia)!
+      const currentRaw = await env.WEBFLOW_KV.get('FLOW_STATE');
+      if (currentRaw === jsonStr) {
+        return; // Estado inalterado: zero PUTs gastos!
+      }
       await env.WEBFLOW_KV.put('FLOW_STATE', jsonStr);
-    } catch (e) {}
+      return; // Já gravou via binding, não chama REST API duplicada!
+    } catch (e) {
+      console.warn('KV temporariamente limitado ou indisponível:', e.message);
+      return;
+    }
   }
 
   const token = env?.CLOUDFLARE_API_TOKEN || env?.CF_TOKEN;
@@ -109,6 +131,8 @@ export async function onRequestPost(context) {
   try {
     const body = await request.json().catch(() => ({}));
     const current = await getStoredState(env);
+    const currentState = current || DEFAULT_STATE;
+
     let cleanKeyword = currentState.keyword;
     if (body.keyword !== undefined) {
       const parts = String(body.keyword).split(/[,;|]/).map(k => k.trim().toUpperCase()).filter(Boolean);
@@ -122,6 +146,10 @@ export async function onRequestPost(context) {
       keyword: cleanKeyword,
       is_active: body.is_active !== undefined ? Boolean(body.is_active) : currentState.is_active
     };
+
+    if (body.flows !== undefined && Array.isArray(body.flows)) {
+      updatedState.flows = body.flows;
+    }
 
     await putStoredState(env, updatedState);
 

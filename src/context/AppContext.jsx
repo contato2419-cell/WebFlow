@@ -37,7 +37,7 @@ const INITIAL_FLOWS = [
           text: 'Tô postando vídeo assim toda semana! Clica no botão abaixo pra liberar o link 👇',
           subtitle: 'Tô postando vídeo assim toda semana! Clica no botão abaixo pra liberar o link 👇',
           buttons: [
-            { id: 'b_follow', title: '✅ Já estou te seguindo!', targetNode: 'node_send_link' }
+            { id: 'b_follow', title: '✅ Já estou seguindo', targetNode: 'node_send_link' }
           ],
           fallbackText: 'Opa! Vi aqui que você ainda não começou a me seguir 👀\n\nDá um pulinho lá no perfil @ygorweb rapidinho, clica em Seguir e aperta no botão de novo que eu já te libero na hora!',
           profileHandle: '@ygorweb',
@@ -56,11 +56,52 @@ const INITIAL_FLOWS = [
             { id: 'b3', title: '🏆 Link do Mousepad 2026', url: 'https://vt.tiktok.com/ZS9UR1CkPgovL-hgiWV/' }
           ]
         }
+      },
+      {
+        id: 'node_start_bottom',
+        type: 'trigger',
+        title: 'Gatilho: Comentário no Reels',
+        position: { x: 50, y: 480 },
+        data: {
+          keyword: 'REA',
+          matchType: 'contains',
+          antiBanJitter: 12,
+          spintaxCount: 8
+        }
+      },
+      {
+        id: 'node_follower_gate_bottom',
+        type: 'follower_gate',
+        title: '1ª DM: Convite & Botão Seguidor',
+        position: { x: 420, y: 480 },
+        data: {
+          title: 'Me segue ai pra min te enviar ingrato(a) 🚀',
+          text: 'Tô postando vídeo assim toda semana! Clica no botão abaixo pra receber 📲',
+          subtitle: 'Tô postando vídeo assim toda semana! Clica no botão abaixo pra receber 📲',
+          buttons: [
+            { id: 'b_follow_bottom', title: '✅ Já estou seguindo', targetNode: 'node_message_bottom' }
+          ],
+          fallbackText: 'Opa! Vi aqui que você ainda não começou a me seguir 👀\n\nDá um pulinho lá no perfil @ygorweb rapidinho, clica em Seguir e aperta no botão de novo que eu já te libero na hora!',
+          profileHandle: '@ygorweb',
+          requireFollow: true
+        }
+      },
+      {
+        id: 'node_message_bottom',
+        type: 'message',
+        title: 'Enviar Mensagem',
+        position: { x: 820, y: 480 },
+        data: {
+          text: 'Tô na mão 🚀\nhttps://x.com/Ithielix/status/2109527114760208745\n\nLink do melhor mousepad de 2026 🏆\nhttps://vt.tiktok.com/ZS9UR1CkPgovL-hgiWV/',
+          buttons: []
+        }
       }
     ],
     edges: [
       { from: 'node_start', to: 'node_follower_gate', port: 'output' },
-      { from: 'node_follower_gate', to: 'node_send_link', port: 'b_follow' }
+      { from: 'node_follower_gate', to: 'node_send_link', port: 'b_follow' },
+      { from: 'node_start_bottom', to: 'node_follower_gate_bottom', port: 'output' },
+      { from: 'node_follower_gate_bottom', to: 'node_message_bottom', port: 'b_follow_bottom' }
     ]
   },
   {
@@ -279,17 +320,10 @@ export const AppProvider = ({ children }) => {
 
         return {
           ...flow,
-          name: 'Reels: Comentário → Convite Seguidor → Link Seguro',
-          stats: { sent: 26, openRate: '100%', ctr: '63.3%' },
+          name: flow.name || 'Reels: Comentário → Convite Seguidor → Link Seguro',
+          stats: flow.stats || { sent: 26, openRate: '100%', ctr: '63.3%' },
           nodes: cleanedNodes,
           edges: cleanedEdges
-        };
-      }
-      if (flow.channel === 'whatsapp') {
-        return {
-          ...flow,
-          active: false,
-          stats: { sent: 0, openRate: '0%', ctr: '0%' }
         };
       }
       return flow;
@@ -369,8 +403,9 @@ export const AppProvider = ({ children }) => {
   }, [selectedFlowId]);
 
   const isInitialSyncDone = useRef(false);
+  const lastSyncedHashRef = useRef('');
 
-  // Sincronização com o Backend KV da Cloudflare (Kill-Switch e Textos em tempo real)
+  // Sincronização inteligente com o Backend KV da Cloudflare (com proteção de cota)
   const syncFlowToBackend = async (flowsList) => {
     try {
       const instaFlow = flowsList.find(f => f.channel === 'instagram');
@@ -404,21 +439,30 @@ export const AppProvider = ({ children }) => {
       const fallbackText = gateNode?.data?.fallbackText || "Opa! Vi aqui que você ainda não começou a me seguir 👀\n\nDá um pulinho lá no perfil @ygorweb rapidinho, clica em Seguir e aperta no botão de novo que eu já te libero na hora!";
       const finalLinkMessage = linkNode?.data?.text || `Tá na mão🚀 \nhttps://x.com/Ithielix/status/2109527114760208745\n\nLink do melhor mousepad de 2026 🏆\nhttps://vt.tiktok.com/ZS9UR1CkPgovL-hgiWV/`;
 
+      const payloadStr = JSON.stringify({
+        is_active,
+        flows: flowsList,
+        keyword,
+        delaySeconds,
+        antiBanJitter,
+        firstDmTitle,
+        firstDmSubtitle,
+        firstDmText,
+        buttonText,
+        travaReminder: fallbackText,
+        finalLinkMessage
+      });
+
+      // PROTEÇÃO DE COTA: Se o payload for idêntico ao já sincronizado, NÃO faz chamada de rede!
+      if (lastSyncedHashRef.current === payloadStr) {
+        return;
+      }
+      lastSyncedHashRef.current = payloadStr;
+
       await fetch('/api/state', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          is_active,
-          keyword,
-          delaySeconds,
-          antiBanJitter,
-          firstDmTitle,
-          firstDmSubtitle,
-          firstDmText,
-          buttonText,
-          travaReminder: fallbackText,
-          finalLinkMessage
-        })
+        body: payloadStr
       });
     } catch (e) {
       console.warn('Erro ao sincronizar com KV:', e);
@@ -432,45 +476,21 @@ export const AppProvider = ({ children }) => {
       .then(data => {
         if (data.success && data.state) {
           setFlows(prev => {
+            // Se houver fluxos salvos na nuvem pelo usuário, restaura todos os fluxos e nós preservando cada mensagem individual!
+            if (Array.isArray(data.state.flows) && data.state.flows.length > 0) {
+              const loaded = cleanFlows(data.state.flows);
+              try {
+                localStorage.setItem('webflow_flows_v9', JSON.stringify(loaded));
+              } catch (e) {}
+              return loaded;
+            }
+
+            // Se ainda não houver flows na nuvem, preserva rigorosamente os nós locais do usuário (localStorage)
+            // e apenas atualiza o status de ativação da automação (sem JAMAIS sobrescrever os textos de nenhum bloco!)
             const updated = prev.map(f => {
               if (f.channel === 'instagram') {
                 const nextActive = typeof data.state.is_active === 'boolean' ? data.state.is_active : f.active;
-                const nextNodes = f.nodes.map(node => {
-                  if (node.type === 'follower_gate') {
-                    const savedText = data.state.firstDmSubtitle || data.state.firstDmText;
-                    return {
-                      ...node,
-                      data: {
-                        ...node.data,
-                        title: data.state.firstDmTitle || node.data?.title || 'Me segue ai pra min te enviar ingrato(a) 🚀',
-                        text: savedText || node.data?.text,
-                        subtitle: savedText || node.data?.subtitle,
-                        fallbackText: data.state.travaReminder || node.data?.fallbackText,
-                        buttons: node.data?.buttons?.map((b, idx) => idx === 0 ? { ...b, title: data.state.buttonText || b.title } : b)
-                      }
-                    };
-                  }
-                  if (node.type === 'message' || node.id === 'node_send_link') {
-                    return {
-                      ...node,
-                      data: {
-                        ...node.data,
-                        text: data.state.finalLinkMessage || node.data?.text
-                      }
-                    };
-                  }
-                  if (node.type === 'trigger') {
-                    return {
-                      ...node,
-                      data: {
-                        ...node.data,
-                        keyword: cleanKeywordString(node.data?.keyword || 'LISTA')
-                      }
-                    };
-                  }
-                  return node;
-                });
-                return { ...f, active: nextActive, nodes: nextNodes };
+                return { ...f, active: nextActive };
               }
               return f;
             });
@@ -500,7 +520,7 @@ export const AppProvider = ({ children }) => {
       .catch(() => {});
   }, []);
 
-  // Sincronização localStorage com debounce para não travar o drag dos nós
+  // Sincronização localStorage e nuvem com debounce para não travar o drag dos nós nem estourar cotas
   useEffect(() => {
     const timer = setTimeout(() => {
       localStorage.setItem('webflow_flows_v9', JSON.stringify(flows));
@@ -508,7 +528,7 @@ export const AppProvider = ({ children }) => {
       if (isInitialSyncDone.current) {
         syncFlowToBackend(flows);
       }
-    }, 300);
+    }, 1500);
     return () => clearTimeout(timer);
   }, [flows]);
 
@@ -674,7 +694,7 @@ export const AppProvider = ({ children }) => {
   const [automationStatus, setAutomationStatus] = useState('');
 
   // Motor Oficial: Processa comentários reais nos Reels do Instagram e dispara DMs e respostas públicas
-  const processLiveAutomation = async () => {
+  const processLiveAutomation = async (force = false) => {
     try {
       const activeFlow = flows.find(f => f.channel === 'instagram' && f.active);
       if (!activeFlow) {
@@ -684,10 +704,7 @@ export const AppProvider = ({ children }) => {
       }
 
       setIsRunningAutomation(true);
-      setAutomationStatus('Sincronizando fluxo com a nuvem e buscando comentários...');
-      
-      // Salva e sincroniza os dados mais recentes do fluxo na nuvem antes de disparar
-      await syncFlowToBackend(flows);
+      setAutomationStatus(force ? '⚡ Forçando verificação de comentários...' : 'Buscando novos comentários...');
 
       const triggerNode = activeFlow?.nodes?.find(n => n.type === 'trigger');
       const allGateNodes = (activeFlow?.nodes || []).filter(n => n.type === 'follower_gate');
@@ -722,6 +739,7 @@ export const AppProvider = ({ children }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           is_active: true,
+          force,
           keyword, 
           firstDmTitle,
           firstDmSubtitle,
@@ -736,19 +754,21 @@ export const AppProvider = ({ children }) => {
       const data = await res.json();
       
       if (data.success) {
-        if (data.processedCount > 0) {
+        if (data.rateLimited) {
+          setAutomationStatus(`⚠️ Meta em resfriamento anti-spam (${data.cooldownMinutes || 15} min). Pausado para segurança.`);
+        } else if (data.processedCount > 0) {
           setAutomationStatus(`✅ ${data.processedCount} lead(s) processados com delay anti-ban!`);
-          // Incrementa contagem de envios
+          // Incrementa contagem de envios APENAS com envios reais
           setFlows(prev => prev.map(f => f.id === activeFlow.id ? {
             ...f,
             stats: { ...f.stats, sent: (f.stats?.sent || 0) + data.processedCount }
           } : f));
 
-          // Se ainda há comentários pendentes na fila, processa o próximo lote automaticamente
-          if (data.hasMore) {
+          // Se ainda há comentários pendentes na fila E NÃO está com rate limit, processa próximo lote com delay seguro
+          if (data.hasMore && !data.rateLimited) {
             setTimeout(() => {
               processLiveAutomation();
-            }, 5000);
+            }, 12000);
           }
         } else if (data.skipped?.length > 0 && data.skipped.some(s => s.reason === 'waiting_human_delay')) {
           setAutomationStatus('⏳ Aguardando delay humano anti-ban para novos comentários...');
@@ -756,7 +776,7 @@ export const AppProvider = ({ children }) => {
           setAutomationStatus('Nenhum novo comentário pendente no momento.');
         }
       } else {
-        setAutomationStatus('Automação pausada ou em espera.');
+        setAutomationStatus(data?.message || 'Automação ativa em monitoramento.');
       }
       return data;
     } catch (e) {
@@ -764,7 +784,7 @@ export const AppProvider = ({ children }) => {
       setAutomationStatus('Conexão ativa');
     } finally {
       setIsRunningAutomation(false);
-      setTimeout(() => setAutomationStatus(''), 4000);
+      setTimeout(() => setAutomationStatus(''), 6000);
     }
   };
 

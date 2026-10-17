@@ -280,7 +280,7 @@ export async function onRequestPost(context) {
           const postbackPayload = msg.postback?.payload || msg.message?.quick_reply?.payload;
 
           // Detecta se o usuário clicou no botão "Já estou te seguindo!"
-          const isButtonClicked = postbackPayload === 'FOLLOW_CONFIRMED';
+          const isButtonClicked = postbackPayload === 'FOLLOW_CONFIRMED' || (typeof postbackPayload === 'string' && postbackPayload.startsWith('FOLLOW_CONFIRMED'));
 
           // Detecta se o usuário enviou a palavra-chave no direct
           const isExactKeyword = matchesKeyword(rawText, state.keyword);
@@ -339,13 +339,39 @@ export async function onRequestPost(context) {
 
             if (isFollower) {
               // SEGUIDOR CONFIRMADO: Envia o link final com segurança!
+              let textToSend = state.finalLinkMessage;
+              const payloadStr = typeof postbackPayload === 'string' ? postbackPayload : '';
+              const targetNodeId = payloadStr.includes(':') ? payloadStr.split(':')[1] : null;
+
+              if (Array.isArray(state.flows)) {
+                for (const fl of state.flows) {
+                  if (targetNodeId) {
+                    const node = (fl.nodes || []).find(n => n.id === targetNodeId);
+                    if (node?.data?.text) {
+                      textToSend = node.data.text;
+                      break;
+                    }
+                  } else {
+                    const gate = (fl.nodes || []).find(n => n.type === 'follower_gate');
+                    const targetId = gate?.data?.buttons?.[0]?.targetNode;
+                    if (targetId) {
+                      const node = (fl.nodes || []).find(n => n.id === targetId);
+                      if (node?.data?.text) {
+                        textToSend = node.data.text;
+                        break;
+                      }
+                    }
+                  }
+                }
+              }
+
               try {
                 await fetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${PAGE_TOKEN}`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
                     recipient: { id: senderId },
-                    message: { text: state.finalLinkMessage }
+                    message: { text: textToSend }
                   })
                 });
               } catch (e) {
@@ -365,7 +391,7 @@ export async function onRequestPost(context) {
                         {
                           content_type: "text",
                           title: formatMetaButtonTitle(state.buttonText),
-                          payload: "FOLLOW_CONFIRMED"
+                          payload: postbackPayload || "FOLLOW_CONFIRMED"
                         }
                       ]
                     }
