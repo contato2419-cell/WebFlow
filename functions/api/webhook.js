@@ -1,5 +1,6 @@
 // Cloudflare Pages Function: Webhook Oficial da Meta (Instagram Direct & Comentários)
 // REA: Arquitetura Estilo ManyChat com Trava Rigorosa de Seguidor, Kill-Switch Global e Zero Mensagens Não-Solicitadas
+import { getPageToken } from '../../lib/metaToken.js';
 
 const PUBLIC_REPLIES = [
   "Acabei de te enviar no direct! Dá uma olhada 🚀",
@@ -133,7 +134,7 @@ export async function onRequestGet(context) {
 
 export async function onRequestPost(context) {
   const { request, env } = context;
-  const PAGE_TOKEN = env.META_PAGE_ACCESS_TOKEN;
+  const PAGE_TOKEN = await getPageToken(env);
   const MY_PAGE_ID = '1299815346552748';
   const MY_IG_ID = '17841428469294913';
 

@@ -1,5 +1,6 @@
 // Cloudflare Pages Function: Motor de Comentários em Background (Meta Graph API v21.0)
 // REA: Sincronizado com KV, Delay Humano Configurável, Anti-Duplicação e Zero Spam em DMs
+import { getPageToken } from '../../lib/metaToken.js';
 
 const PAGE_ID = '1299815346552748';
 const IG_USER_ID = '17841428469294913';
@@ -29,6 +30,8 @@ const DEFAULT_STATE = {
 
 const CF_ACCOUNT_ID = 'be7db94a293732762035a5c23126dfae';
 const CF_KV_ID = '6ffd8aa59e6a43ebaee8c87a7dd5ceb1';
+
+const PRIVATE_REPLY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
 let inMemoryStateCache = null;
 let cacheTimestamp = 0;
@@ -168,7 +171,7 @@ export async function onRequestGet(context) {
 
 export async function onRequestPost(context) {
   const { request, env } = context;
-  const PAGE_TOKEN = env.META_PAGE_ACCESS_TOKEN;
+  const PAGE_TOKEN = await getPageToken(env);
 
   try {
     // 1. CARREGA ESTADO GLOBAL DO KV COM FALLBACK REST
@@ -224,7 +227,25 @@ export async function onRequestPost(context) {
     const recentWithComments = withComments.filter(m => (m.comments_count || 0) < 20).slice(0, 3);
     // 4. Junta tudo com limite de segurança para respeitar o orçamento de subrequests do Cloudflare
     const combined = [...viralReels, ...recentWithComments];
-    const targetReels = combined.length > 0 ? combined.slice(0, 5) : mediaList.slice(0, 1);
+    // Lista as mídias com comentários (usado pela varredura de atrasados)
+    if (body.listMedia) {
+      return new Response(JSON.stringify({
+        success: true,
+        media: withComments.map(m => ({ id: m.id, comments: m.comments_count, timestamp: m.timestamp }))
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+      });
+    }
+
+    // Modo varredura: { reelId, after, maxPages } percorre comentários antigos de um reel, página por página
+    const sweepReelId = body.reelId ? String(body.reelId) : null;
+    const sweepAfter = sweepReelId && body.after ? String(body.after) : null;
+    const targetReels = sweepReelId
+      ? [{ id: sweepReelId }]
+      : (combined.length > 0 ? combined.slice(0, 5) : mediaList.slice(0, 1));
+    let sweepNextAfter = null;
+    let sweepDone = true;
 
     // Verifica resfriamento anti-spam temporário do Instagram (limite horário da Meta)
     const isForced = Boolean(body.force);
@@ -262,9 +283,11 @@ export async function onRequestPost(context) {
       }
 
       // Varredura focada: 1 ou 2 páginas dos comentários mais recentes (ordem cronológica reversa)
-      let commentsUrl = `https://graph.facebook.com/v21.0/${reel.id}/comments?fields=id,text,timestamp,from,username,replies{id,from}&order=reverse_chronological&limit=50&access_token=${PAGE_TOKEN}`;
+      let pageAfter = sweepAfter;
+      let reachedOldComments = false;
+      let commentsUrl = `https://graph.facebook.com/v21.0/${reel.id}/comments?fields=id,text,timestamp,from,username,replies{id,from}&order=reverse_chronological&limit=50${pageAfter ? `&after=${encodeURIComponent(pageAfter)}` : ''}&access_token=${PAGE_TOKEN}`;
       let pageCount = 0;
-      const MAX_PAGES_PER_REEL = 2;
+      const MAX_PAGES_PER_REEL = sweepReelId ? Math.min(Number(body.maxPages) || 8, 15) : 2;
 
       while (commentsUrl && pageCount < MAX_PAGES_PER_REEL && commentsProcessed < MAX_COMMENTS_PER_RUN && !isRateLimited && subrequestBudget > 2) {
         pageCount++;
@@ -274,6 +297,9 @@ export async function onRequestPost(context) {
         const comments = commData.data || [];
 
         if (comments.length === 0) break;
+
+        // Na varredura, se a página for interrompida no meio, a próxima chamada recomeça nela
+        if (sweepReelId) { sweepNextAfter = pageAfter; sweepDone = false; }
 
         for (const comment of comments) {
           if (commentsProcessed >= MAX_COMMENTS_PER_RUN || subrequestBudget <= 2) {
@@ -285,6 +311,13 @@ export async function onRequestPost(context) {
           const user = (comment.username || comment.from?.username || '').toLowerCase();
 
           if (!user || user === 'ygorweb') continue;
+
+          // A Meta só aceita resposta privada até 7 dias depois do comentário (subcode 2534024).
+          // Como a lista vem do mais novo pro mais velho, daqui pra frente nada mais pode ser enviado.
+          if (Date.now() - new Date(comment.timestamp).getTime() > PRIVATE_REPLY_WINDOW_MS) {
+            reachedOldComments = true;
+            break;
+          }
 
           // REGRA DE SEGURANÇA: Casamento flexível para palavra-chave
           if (matchesKeyword(text, keyword)) {
@@ -314,6 +347,7 @@ export async function onRequestPost(context) {
             }
 
             let dmStatus = 'skipped';
+            let dmError = null;
 
             // Resolução Dinâmica de Esteiras e Blocos no DAG
             let branchTitle = firstDmTitle;
@@ -376,6 +410,7 @@ export async function onRequestPost(context) {
             };
 
             try {
+              subrequestBudget--;
               const dmRes = await fetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${PAGE_TOKEN}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -396,8 +431,13 @@ export async function onRequestPost(context) {
                 // SIGNIFICA: A DM PRIVADA JÁ FOI ENTREGUE ANTERIORMENTE AO USUÁRIO!
                 if (subcode === 2534023) {
                   dmStatus = 'already_delivered';
+                } else if (subcode === 2534024) {
+                  // Comentário fora da janela de 7 dias: o texto simples também seria recusado
+                  dmStatus = 'failed';
+                  dmError = { code: dmJson.error?.code, subcode, message: dmJson.error?.message };
                 } else {
                   // Fallback de texto com Quick Reply
+                  subrequestBudget--;
                   const fallbackRes = await fetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${PAGE_TOKEN}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -427,6 +467,8 @@ export async function onRequestPost(context) {
                       break;
                     } else {
                       dmStatus = 'failed';
+                      const metaErr = fallbackJson.error || dmJson.error || {};
+                      dmError = { code: metaErr.code, subcode: metaErr.error_subcode, message: metaErr.message };
                     }
                   }
                 }
@@ -439,6 +481,7 @@ export async function onRequestPost(context) {
             let pubStatus = 'skipped';
             if (dmStatus === 'success_interactive_card' || dmStatus === 'success_quick_reply' || dmStatus === 'already_delivered') {
               await sleep(300);
+              subrequestBudget--;
               try {
                 const replyText = PUBLIC_REPLIES[Math.floor(Math.random() * PUBLIC_REPLIES.length)];
                 const pubRes = await fetch(`https://graph.facebook.com/v21.0/${comment.id}/replies?access_token=${PAGE_TOKEN}`, {
@@ -467,7 +510,9 @@ export async function onRequestPost(context) {
                 commentId: comment.id,
                 reelId: reel.id,
                 user,
-                reason: isRateLimited ? 'meta_rate_limited' : 'dm_failed'
+                timestamp: comment.timestamp,
+                reason: isRateLimited ? 'meta_rate_limited' : 'dm_failed',
+                metaError: dmError
               });
             }
 
@@ -476,7 +521,19 @@ export async function onRequestPost(context) {
         }
 
         if (isRateLimited) break;
+        if (reachedOldComments) {
+          if (sweepReelId) { sweepNextAfter = null; sweepDone = true; }
+          break;
+        }
         commentsUrl = commData.paging?.next || null;
+        if (commentsProcessed < MAX_COMMENTS_PER_RUN && subrequestBudget > 2) {
+          // Página lida até o fim: a varredura segue para a próxima
+          pageAfter = commData.paging?.cursors?.after || null;
+          if (sweepReelId) {
+            sweepNextAfter = commentsUrl ? pageAfter : null;
+            sweepDone = !commentsUrl;
+          }
+        }
       }
     }
 
@@ -513,6 +570,7 @@ export async function onRequestPost(context) {
       mediaCount: mediaList.length,
       processedCount: processed.length,
       hasMore: hasMorePending,
+      sweep: sweepReelId ? { done: sweepDone, after: sweepNextAfter } : undefined,
       processed,
       skipped
     }), {
