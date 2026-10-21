@@ -384,8 +384,7 @@ export const AppProvider = ({ children }) => {
         accountName: '@ygorweb', 
         pageId: '1299815346552748', 
         verified: true,
-        avatar: '/avatar_ygorweb.jpg',
-        token: 'EAAdPoo2JfNUBSrpDVADHAZBWNClCWCaLngml0bbTRS5dv0I8RX4jceRChZBi3pZBkg6xmr3MIfMQSTvvMMLJG8RP4lfn97w2M0xZAbdWFA9BETDkfzfjP3MMlO1eoIMAehygJsCdinlt1g2w1Vqx3lZBnb0ZBmHUti2plKKatMZClKW2SIKL3jGwXOwipcvk65pZCHHbK0dB'
+        avatar: '/avatar_ygorweb.jpg'
       },
       whatsapp: { connected: false, number: '', wabaId: '', verified: false },
       telegram: { connected: false, botUsername: '' }

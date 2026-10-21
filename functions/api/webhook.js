@@ -60,7 +60,9 @@ function matchesKeyword(text, keywordString) {
   return keywords.some(kw => {
     const cleanKw = kw.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const regex = new RegExp(`(^|[^a-z0-9])${cleanKw}([^a-z0-9]|$)`, 'i');
-    return regex.test(cleanText);
+    if (regex.test(cleanText)) return true;
+    if (cleanKw === 'lista' && /(^|[^a-z0-9])lixta([^a-z0-9]|$)/i.test(cleanText)) return true;
+    return false;
   });
 }
 
@@ -131,7 +133,7 @@ export async function onRequestGet(context) {
 
 export async function onRequestPost(context) {
   const { request, env } = context;
-  const PAGE_TOKEN = env.META_PAGE_ACCESS_TOKEN || 'EAAdPoo2JfNUBSrpDVADHAZBWNClCWCaLngml0bbTRS5dv0I8RX4jceRChZBi3pZBkg6xmr3MIfMQSTvvMMLJG8RP4lfn97w2M0xZAbdWFA9BETDkfzfjP3MMlO1eoIMAehygJsCdinlt1g2w1Vqx3lZBnb0ZBmHUti2plKKatMZClKW2SIKL3jGwXOwipcvk65pZCHHbK0dB';
+  const PAGE_TOKEN = env.META_PAGE_ACCESS_TOKEN;
   const MY_PAGE_ID = '1299815346552748';
   const MY_IG_ID = '17841428469294913';
 
@@ -326,15 +328,20 @@ export async function onRequestPost(context) {
           // Caso 2: Usuário clicou no botão "Já estou te seguindo!" (FOLLOW_CONFIRMED)
           if (isButtonClicked) {
             // Checagem oficial na Meta se o perfil REALMENTE segue a conta comercial
-            let isFollower = false;
+            // Nota Técnica Meta API: a consulta de is_user_follow_business em contas comerciais requer consentimento de perfil (OAuthException #230).
+            // Se a Meta retornar erro de permissão ou true, consideramos o clique físico no botão como confirmação válida para não travar o lead em loop infinito!
+            let isFollower = true;
             try {
               const checkRes = await fetch(`https://graph.facebook.com/v21.0/${senderId}?fields=is_user_follow_business&access_token=${PAGE_TOKEN}`);
               const checkData = await checkRes.json();
-              if (checkData.is_user_follow_business === true) {
+              if (checkData && checkData.is_user_follow_business === false && !checkData.error) {
+                isFollower = false;
+              } else {
                 isFollower = true;
               }
             } catch (e) {
-              console.error('Erro ao verificar status de seguidor na Meta:', e);
+              console.error('Erro ao verificar status de seguidor na Meta (liberando entrega):', e);
+              isFollower = true;
             }
 
             if (isFollower) {

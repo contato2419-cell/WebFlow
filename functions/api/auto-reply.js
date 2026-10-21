@@ -31,15 +31,17 @@ const CF_ACCOUNT_ID = 'be7db94a293732762035a5c23126dfae';
 const CF_KV_ID = '6ffd8aa59e6a43ebaee8c87a7dd5ceb1';
 
 let inMemoryStateCache = null;
+let cacheTimestamp = 0;
 
 async function getStoredState(env) {
-  if (inMemoryStateCache) return inMemoryStateCache;
+  if (inMemoryStateCache && (Date.now() - cacheTimestamp < 15000)) return inMemoryStateCache;
 
   if (env && env.WEBFLOW_KV) {
     try {
       const stored = await env.WEBFLOW_KV.get('FLOW_STATE');
       if (stored) {
         inMemoryStateCache = JSON.parse(stored);
+        cacheTimestamp = Date.now();
         return inMemoryStateCache;
       }
     } catch (e) {
@@ -57,6 +59,7 @@ async function getStoredState(env) {
     if (res.ok) {
       const text = await res.text();
       inMemoryStateCache = JSON.parse(text);
+      cacheTimestamp = Date.now();
       return inMemoryStateCache;
     }
   } catch (e) {}
@@ -66,6 +69,7 @@ async function getStoredState(env) {
 
 async function putStoredState(env, stateObj) {
   inMemoryStateCache = stateObj;
+  cacheTimestamp = Date.now();
   const jsonStr = JSON.stringify(stateObj);
 
   if (env && env.WEBFLOW_KV) {
@@ -109,7 +113,9 @@ function matchesKeyword(text, keywordString) {
   return keywords.some(kw => {
     const cleanKw = kw.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const regex = new RegExp(`(^|[^a-z0-9])${cleanKw}([^a-z0-9]|$)`, 'i');
-    return regex.test(cleanText);
+    if (regex.test(cleanText)) return true;
+    if (cleanKw === 'lista' && /(^|[^a-z0-9])lixta([^a-z0-9]|$)/i.test(cleanText)) return true;
+    return false;
   });
 }
 
@@ -156,9 +162,13 @@ function formatMetaButtonTitle(str) {
   return truncated.trim() || 'Já estou seguindo';
 }
 
+export async function onRequestGet(context) {
+  return onRequestPost(context);
+}
+
 export async function onRequestPost(context) {
   const { request, env } = context;
-  const PAGE_TOKEN = env.META_PAGE_ACCESS_TOKEN || 'EAAdPoo2JfNUBSrpDVADHAZBWNClCWCaLngml0bbTRS5dv0I8RX4jceRChZBi3pZBkg6xmr3MIfMQSTvvMMLJG8RP4lfn97w2M0xZAbdWFA9BETDkfzfjP3MMlO1eoIMAehygJsCdinlt1g2w1Vqx3lZBnb0ZBmHUti2plKKatMZClKW2SIKL3jGwXOwipcvk65pZCHHbK0dB';
+  const PAGE_TOKEN = env.META_PAGE_ACCESS_TOKEN;
 
   try {
     // 1. CARREGA ESTADO GLOBAL DO KV COM FALLBACK REST
@@ -193,8 +203,8 @@ export async function onRequestPost(context) {
     const rawBtn = body.buttonText || state.buttonText || '✅ Já estou seguindo';
     const buttonText = formatMetaButtonTitle(rawBtn);
 
-    // 2. Busca mídias recentes com contagem de comentários para economizar subrequests
-    const mediaRes = await fetch(`https://graph.facebook.com/v21.0/${IG_USER_ID}/media?fields=id,caption,media_type,timestamp,comments_count&limit=5&access_token=${PAGE_TOKEN}`);
+    // 2. Busca até 25 mídias recentes em uma única chamada Meta
+    const mediaRes = await fetch(`https://graph.facebook.com/v21.0/${IG_USER_ID}/media?fields=id,caption,media_type,timestamp,comments_count&limit=25&access_token=${PAGE_TOKEN}`);
     const mediaData = await mediaRes.json();
     const mediaList = mediaData.data || [];
     
@@ -205,9 +215,16 @@ export async function onRequestPost(context) {
       });
     }
 
-    // Filtra apenas mídias que possuem comentários reais (economiza subrequests no Cloudflare)
-    const activeReels = mediaList.filter(m => (m.comments_count || 0) > 0).slice(0, 3);
-    const targetReels = activeReels.length > 0 ? activeReels : mediaList.slice(0, 1);
+    // Priorização Inteligente de Mídias Ativas:
+    // 1. Mídias com comentários > 0
+    const withComments = mediaList.filter(m => (m.comments_count || 0) > 0);
+    // 2. Garante que reels virais (com alto engajamento, >= 20 comentários) NUNCA sejam deslocados por posts novos
+    const viralReels = withComments.filter(m => (m.comments_count || 0) >= 20);
+    // 3. Reels recentes com comentários (< 20 comentários)
+    const recentWithComments = withComments.filter(m => (m.comments_count || 0) < 20).slice(0, 3);
+    // 4. Junta tudo com limite de segurança para respeitar o orçamento de subrequests do Cloudflare
+    const combined = [...viralReels, ...recentWithComments];
+    const targetReels = combined.length > 0 ? combined.slice(0, 5) : mediaList.slice(0, 1);
 
     // Verifica resfriamento anti-spam temporário do Instagram (limite horário da Meta)
     const isForced = Boolean(body.force);
@@ -232,7 +249,7 @@ export async function onRequestPost(context) {
     const processed = [];
     const skipped = [];
     let commentsProcessed = 0;
-    const MAX_COMMENTS_PER_RUN = 10;
+    const MAX_COMMENTS_PER_RUN = 6;
     let hasMorePending = false;
     let isRateLimited = false;
     let lastMetaError = null;
@@ -244,8 +261,8 @@ export async function onRequestPost(context) {
         break;
       }
 
-      // Varredura focada: 1 ou 2 páginas dos comentários mais recentes
-      let commentsUrl = `https://graph.facebook.com/v21.0/${reel.id}/comments?fields=id,text,timestamp,from,username,replies{id,from}&limit=50&access_token=${PAGE_TOKEN}`;
+      // Varredura focada: 1 ou 2 páginas dos comentários mais recentes (ordem cronológica reversa)
+      let commentsUrl = `https://graph.facebook.com/v21.0/${reel.id}/comments?fields=id,text,timestamp,from,username,replies{id,from}&order=reverse_chronological&limit=50&access_token=${PAGE_TOKEN}`;
       let pageCount = 0;
       const MAX_PAGES_PER_REEL = 2;
 
@@ -375,44 +392,53 @@ export async function onRequestPost(context) {
                   break; // Pausa imediata para respeitar resfriamento anti-spam da Meta
                 }
 
-                // Fallback de texto com Quick Reply
-                const fallbackRes = await fetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${PAGE_TOKEN}`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    recipient: { comment_id: comment.id },
-                    message: {
-                      text: firstDmTitle ? `${firstDmTitle}\n\n${firstDmText}` : firstDmText,
-                      quick_replies: [
-                        {
-                          content_type: "text",
-                          title: buttonText,
-                          payload: "FOLLOW_CONFIRMED"
-                        }
-                      ]
-                    }
-                  })
-                });
-                const fallbackJson = await fallbackRes.json();
-                if (fallbackJson.message_id) {
-                  dmStatus = 'success_quick_reply';
+                // SUBCODE 2534023: "O comentário ao qual você está tentando responder já tem uma resposta"
+                // SIGNIFICA: A DM PRIVADA JÁ FOI ENTREGUE ANTERIORMENTE AO USUÁRIO!
+                if (subcode === 2534023) {
+                  dmStatus = 'already_delivered';
                 } else {
-                  if (fallbackJson.error?.error_subcode === 2534001 || fallbackJson.error?.error_subcode === 2534066) {
-                    isRateLimited = true;
-                    lastMetaError = fallbackJson.error?.message;
-                    break;
+                  // Fallback de texto com Quick Reply
+                  const fallbackRes = await fetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${PAGE_TOKEN}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      recipient: { comment_id: comment.id },
+                      message: {
+                        text: firstDmTitle ? `${firstDmTitle}\n\n${firstDmText}` : firstDmText,
+                        quick_replies: [
+                          {
+                            content_type: "text",
+                            title: buttonText,
+                            payload: "FOLLOW_CONFIRMED"
+                          }
+                        ]
+                      }
+                    })
+                  });
+                  const fallbackJson = await fallbackRes.json();
+                  if (fallbackJson.message_id) {
+                    dmStatus = 'success_quick_reply';
+                  } else {
+                    if (fallbackJson.error?.error_subcode === 2534023) {
+                      dmStatus = 'already_delivered';
+                    } else if (fallbackJson.error?.error_subcode === 2534001 || fallbackJson.error?.error_subcode === 2534066) {
+                      isRateLimited = true;
+                      lastMetaError = fallbackJson.error?.message;
+                      break;
+                    } else {
+                      dmStatus = 'failed';
+                    }
                   }
-                  dmStatus = 'failed';
                 }
               }
             } catch (e) {
               dmStatus = 'error_network';
             }
 
-            // APENAS processa resposta pública se a DM teve sucesso real!
+            // APENAS processa resposta pública se a DM teve sucesso real (ou já foi entregue anteriormente)!
             let pubStatus = 'skipped';
-            if (dmStatus === 'success_interactive_card' || dmStatus === 'success_quick_reply') {
-              await sleep(600);
+            if (dmStatus === 'success_interactive_card' || dmStatus === 'success_quick_reply' || dmStatus === 'already_delivered') {
+              await sleep(300);
               try {
                 const replyText = PUBLIC_REPLIES[Math.floor(Math.random() * PUBLIC_REPLIES.length)];
                 const pubRes = await fetch(`https://graph.facebook.com/v21.0/${comment.id}/replies?access_token=${PAGE_TOKEN}`, {
@@ -435,7 +461,7 @@ export async function onRequestPost(context) {
                 pubStatus
               });
               commentsProcessed++;
-              await sleep(1500); // 1.5s entre envios reais para não sobrecarregar
+              await sleep(800); // 800ms entre envios reais para não sobrecarregar e evitar timeouts
             } else {
               skipped.push({
                 commentId: comment.id,

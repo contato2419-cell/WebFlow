@@ -48,7 +48,7 @@ const USER_CACHE = new Map();
 
 export async function onRequestGet(context) {
   const { request, env } = context;
-  const PAGE_TOKEN = env.META_PAGE_ACCESS_TOKEN || 'EAAdPoo2JfNUBSrpDVADHAZBWNClCWCaLngml0bbTRS5dv0I8RX4jceRChZBi3pZBkg6xmr3MIfMQSTvvMMLJG8RP4lfn97w2M0xZAbdWFA9BETDkfzfjP3MMlO1eoIMAehygJsCdinlt1g2w1Vqx3lZBnb0ZBmHUti2plKKatMZClKW2SIKL3jGwXOwipcvk65pZCHHbK0dB';
+  const PAGE_TOKEN = env.META_PAGE_ACCESS_TOKEN;
 
   try {
     const reqUrl = new URL(request.url);
@@ -194,7 +194,7 @@ export async function onRequestGet(context) {
 // Envio ao vivo de mensagem do atendente humano diretamente para o Instagram do seguidor
 export async function onRequestPost(context) {
   const { request, env } = context;
-  const PAGE_TOKEN = env.META_PAGE_ACCESS_TOKEN || 'EAAdPoo2JfNUBSrpDVADHAZBWNClCWCaLngml0bbTRS5dv0I8RX4jceRChZBi3pZBkg6xmr3MIfMQSTvvMMLJG8RP4lfn97w2M0xZAbdWFA9BETDkfzfjP3MMlO1eoIMAehygJsCdinlt1g2w1Vqx3lZBnb0ZBmHUti2plKKatMZClKW2SIKL3jGwXOwipcvk65pZCHHbK0dB';
+  const PAGE_TOKEN = env.META_PAGE_ACCESS_TOKEN;
 
   try {
     const { recipientId, text } = await request.json();
