@@ -1,6 +1,7 @@
 // Cloudflare Pages Function: Webhook Oficial da Meta (Instagram Direct & Comentários)
 // REA: Arquitetura Estilo ManyChat com Trava Rigorosa de Seguidor, Kill-Switch Global e Zero Mensagens Não-Solicitadas
 import { getPageToken } from '../../lib/metaToken.js';
+import { allKeywords, resolveBranch, gateTargetNodeId, activeInstagramFlow } from '../../lib/flowRouting.js';
 
 const PUBLIC_REPLIES = [
   "Acabei de te enviar no direct! Dá uma olhada 🚀",
@@ -174,17 +175,20 @@ export async function onRequestPost(context) {
             if (!username || username.toLowerCase() === 'ygorweb') continue;
 
             // REGRA DE SEGURANÇA 2: CASAMENTO FLEXÍVEL DE PALAVRA-CHAVE (suporta emojis e pontuações)
-            if (!matchesKeyword(commentText, state.keyword)) {
+            if (!matchesKeyword(commentText, allKeywords(state))) {
               continue; // Comentário comum sem a palavra-chave. NÃO FAZ NADA!
             }
 
-            // Suporte aos textos configurados pelo usuário
-            const firstDmText = state.firstDmSubtitle || state.firstDmText || "Tô postando vídeo assim toda semana! Clica no botão abaixo pra liberar o link 👇";
-            const rawTitle = state.firstDmTitle || "Só me seguir e clicar no botão pra min não tomar ban";
+            // Textos e destino do bloco de seguidor ligado à palavra-chave comentada
+            const branch = resolveBranch(state, commentText, matchesKeyword);
+            const gateData = branch?.gate?.data || {};
+            const firstDmText = gateData.text || gateData.subtitle || state.firstDmSubtitle || state.firstDmText || "Tô postando vídeo assim toda semana! Clica no botão abaixo pra liberar o link 👇";
+            const rawTitle = gateData.title || state.firstDmTitle || "Só me seguir e clicar no botão pra min não tomar ban";
             const firstDmTitle = rawTitle.length <= 80 ? rawTitle : rawTitle.slice(0, 80);
             const firstDmSubtitle = smartMetaCardSubtitle(firstDmText);
-            const rawBtn = state.buttonText || "✅ Já estou seguindo";
+            const rawBtn = gateData.buttons?.[0]?.title || state.buttonText || "✅ Já estou seguindo";
             const buttonText = formatMetaButtonTitle(rawBtn);
+            const followPayload = branch?.targetNodeId ? `FOLLOW_CONFIRMED:${branch.targetNodeId}` : "FOLLOW_CONFIRMED";
 
             // Envia a Caixinha Interativa (Generic Template) com o botão nativo da Meta
             const caixinhaPayload = {
@@ -202,7 +206,7 @@ export async function onRequestPost(context) {
                           {
                             type: "postback",
                             title: buttonText,
-                            payload: "FOLLOW_CONFIRMED"
+                            payload: followPayload
                           }
                         ]
                       }
@@ -235,7 +239,7 @@ export async function onRequestPost(context) {
                         {
                           content_type: "text",
                           title: buttonText,
-                          payload: "FOLLOW_CONFIRMED"
+                          payload: followPayload
                         }
                       ]
                     }
@@ -286,7 +290,7 @@ export async function onRequestPost(context) {
           const isButtonClicked = postbackPayload === 'FOLLOW_CONFIRMED' || (typeof postbackPayload === 'string' && postbackPayload.startsWith('FOLLOW_CONFIRMED'));
 
           // Detecta se o usuário enviou a palavra-chave no direct
-          const isExactKeyword = matchesKeyword(rawText, state.keyword);
+          const isExactKeyword = matchesKeyword(rawText, allKeywords(state));
 
           // REGRA DE SEGURANÇA 3: FILTRO ANTI-INTRUSÃO
           // Se NÃO foi clique no botão E NÃO foi a palavra-chave configurada:
@@ -298,9 +302,12 @@ export async function onRequestPost(context) {
 
           // Caso 1: Usuário enviou a palavra-chave no Direct (ex: "LISTA")
           if (isExactKeyword && !isButtonClicked) {
-            const firstDmText = state.firstDmSubtitle || state.firstDmText || "Tô postando vídeo assim toda semana! Clica no botão abaixo pra liberar o link 👇";
-            const rawBtn = state.buttonText || "✅ Já estou seguindo";
+            const branch = resolveBranch(state, rawText, matchesKeyword);
+            const gateData = branch?.gate?.data || {};
+            const firstDmText = gateData.text || gateData.subtitle || state.firstDmSubtitle || state.firstDmText || "Tô postando vídeo assim toda semana! Clica no botão abaixo pra liberar o link 👇";
+            const rawBtn = gateData.buttons?.[0]?.title || state.buttonText || "✅ Já estou seguindo";
             const buttonText = formatMetaButtonTitle(rawBtn);
+            const followPayload = branch?.targetNodeId ? `FOLLOW_CONFIRMED:${branch.targetNodeId}` : "FOLLOW_CONFIRMED";
 
             try {
               await fetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${PAGE_TOKEN}`, {
@@ -314,7 +321,7 @@ export async function onRequestPost(context) {
                       {
                         content_type: "text",
                         title: buttonText,
-                        payload: "FOLLOW_CONFIRMED"
+                        payload: followPayload
                       }
                     ]
                   }
@@ -360,8 +367,10 @@ export async function onRequestPost(context) {
                       break;
                     }
                   } else {
+                    // Botão antigo sem destino no payload: usa o primeiro bloco de seguidor do fluxo
+                    if (fl !== activeInstagramFlow(state)) continue;
                     const gate = (fl.nodes || []).find(n => n.type === 'follower_gate');
-                    const targetId = gate?.data?.buttons?.[0]?.targetNode;
+                    const targetId = gate ? gateTargetNodeId(fl, gate) : '';
                     if (targetId) {
                       const node = (fl.nodes || []).find(n => n.id === targetId);
                       if (node?.data?.text) {

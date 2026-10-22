@@ -111,10 +111,20 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
     });
 
     // Se havia ligação saindo de 'output' no follower_gate, redireciona para a porta do botão de verificação
+    // e grava o destino no botão (é o targetNode que o robô usa pra mandar a mensagem certa)
     let repairedEdges = (currentFlow.edges || []).map(e => {
-      const sourceNode = currentFlow.nodes.find(n => n.id === e.from);
+      const sourceNode = repairedNodes.find(n => n.id === e.from);
       if (sourceNode?.type === 'follower_gate' && (!e.port || e.port === 'output')) {
+        needsRepair = true;
         const btnId = sourceNode.data?.buttons?.[0]?.id || ('b_follow_' + sourceNode.id);
+        const idx = repairedNodes.indexOf(sourceNode);
+        repairedNodes[idx] = {
+          ...sourceNode,
+          data: {
+            ...sourceNode.data,
+            buttons: sourceNode.data.buttons.map((b, i) => (i === 0 && !b.targetNode ? { ...b, targetNode: e.to } : b))
+          }
+        };
         return { ...e, port: btnId };
       }
       return e;
@@ -175,22 +185,29 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
       return;
     }
 
+    // No bloco de seguidor, a saída geral é o próprio botão "Já estou seguindo"
+    const fromNode = currentFlow.nodes.find(n => n.id === connectingWire.fromNodeId);
+    let port = connectingWire.port || 'output';
+    if (fromNode?.type === 'follower_gate' && port === 'output' && fromNode.data?.buttons?.[0]?.id) {
+      port = fromNode.data.buttons[0].id;
+    }
+
     const newEdge = {
       from: connectingWire.fromNodeId,
       to: targetNodeId,
-      port: connectingWire.port || 'output'
+      port
     };
 
     // Remove qualquer edge anterior saindo do mesmo nó e da mesma porta
-    const filteredEdges = (currentFlow.edges || []).filter(e => 
-      !(e.from === connectingWire.fromNodeId && (e.port || 'output') === (connectingWire.port || 'output'))
+    const filteredEdges = (currentFlow.edges || []).filter(e =>
+      !(e.from === connectingWire.fromNodeId && (e.port || 'output') === port)
     );
 
     // Se a porta for de um botão específico, atualiza o targetNode do botão
     const updatedNodes = currentFlow.nodes.map(n => {
       if (n.id === connectingWire.fromNodeId && n.data?.buttons) {
-        const newBtns = n.data.buttons.map(b => 
-          b.id === connectingWire.port ? { ...b, targetNode: targetNodeId } : b
+        const newBtns = n.data.buttons.map(b =>
+          b.id === port ? { ...b, targetNode: targetNodeId } : b
         );
         return { ...n, data: { ...n.data, buttons: newBtns } };
       }

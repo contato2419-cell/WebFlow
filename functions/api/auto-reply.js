@@ -1,6 +1,7 @@
 // Cloudflare Pages Function: Motor de Comentários em Background (Meta Graph API v21.0)
 // REA: Sincronizado com KV, Delay Humano Configurável, Anti-Duplicação e Zero Spam em DMs
 import { getPageToken } from '../../lib/metaToken.js';
+import { allKeywords, resolveBranch } from '../../lib/flowRouting.js';
 
 const PAGE_ID = '1299815346552748';
 const IG_USER_ID = '17841428469294913';
@@ -194,7 +195,25 @@ export async function onRequestPost(context) {
       });
     }
 
-    const keyword = (body.keyword || state.keyword || 'LISTA').trim().toLowerCase();
+    const keyword = (body.keyword || allKeywords(state) || 'LISTA').trim().toLowerCase();
+
+    // Simulação: { previewText } diz qual mensagem final sairia para um comentário, sem enviar nada
+    if (body.previewText !== undefined) {
+      const text = String(body.previewText);
+      const branch = resolveBranch(state, text, matchesKeyword);
+      const finalNode = branch ? branch.flow.nodes.find(n => n.id === branch.targetNodeId) : null;
+      return new Response(JSON.stringify({
+        success: true,
+        previewText: text,
+        keywordMatch: matchesKeyword(text, keyword),
+        trigger: branch?.trigger?.data?.keyword || null,
+        payload: branch?.targetNodeId ? `FOLLOW_CONFIRMED:${branch.targetNodeId}` : 'FOLLOW_CONFIRMED',
+        finalText: finalNode?.data?.text || null
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+      });
+    }
     const baseDelaySeconds = Number(body.delaySeconds || state.delaySeconds) || 15;
     const jitterSeconds = Number(body.antiBanJitter || state.antiBanJitter) || 8;
     
@@ -355,31 +374,18 @@ export async function onRequestPost(context) {
             let branchButtonText = buttonText;
             let branchPayload = "FOLLOW_CONFIRMED";
 
-            const flowsList = state.flows || body.flows;
-            if (Array.isArray(flowsList)) {
-              const activeInstaFlow = flowsList.find(f => f.channel === 'instagram' && f.active);
-              if (activeInstaFlow && Array.isArray(activeInstaFlow.nodes)) {
-                const matchedTrig = activeInstaFlow.nodes.find(n => n.type === 'trigger' && matchesKeyword(text, n.data?.keyword));
-                if (matchedTrig) {
-                  const edgeFromTrig = (activeInstaFlow.edges || []).find(e => e.from === matchedTrig.id);
-                  const connectedGate = edgeFromTrig 
-                    ? activeInstaFlow.nodes.find(n => n.id === edgeFromTrig.to && n.type === 'follower_gate')
-                    : null;
-                  if (connectedGate) {
-                    const rawT = connectedGate.data?.title || branchTitle;
-                    const rawSub = connectedGate.data?.text || connectedGate.data?.subtitle || branchSubtitle;
-                    const btn = connectedGate.data?.buttons?.[0];
-                    const rawB = btn?.title || branchButtonText;
-                    const targetNodeId = btn?.targetNode || '';
+            const branch = resolveBranch({ ...state, flows: state.flows || body.flows }, text, matchesKeyword);
+            if (branch) {
+              const connectedGate = branch.gate;
+              const rawT = connectedGate.data?.title || branchTitle;
+              const rawSub = connectedGate.data?.text || connectedGate.data?.subtitle || branchSubtitle;
+              const rawB = connectedGate.data?.buttons?.[0]?.title || branchButtonText;
 
-                    branchTitle = rawT.length <= 80 ? rawT : rawT.slice(0, 80);
-                    branchSubtitle = smartMetaCardSubtitle(rawSub);
-                    branchButtonText = formatMetaButtonTitle(rawB);
-                    if (targetNodeId) {
-                      branchPayload = `FOLLOW_CONFIRMED:${targetNodeId}`;
-                    }
-                  }
-                }
+              branchTitle = rawT.length <= 80 ? rawT : rawT.slice(0, 80);
+              branchSubtitle = smartMetaCardSubtitle(rawSub);
+              branchButtonText = formatMetaButtonTitle(rawB);
+              if (branch.targetNodeId) {
+                branchPayload = `FOLLOW_CONFIRMED:${branch.targetNodeId}`;
               }
             }
 
@@ -444,12 +450,12 @@ export async function onRequestPost(context) {
                     body: JSON.stringify({
                       recipient: { comment_id: comment.id },
                       message: {
-                        text: firstDmTitle ? `${firstDmTitle}\n\n${firstDmText}` : firstDmText,
+                        text: branchTitle ? `${branchTitle}\n\n${branchSubtitle}` : branchSubtitle,
                         quick_replies: [
                           {
                             content_type: "text",
-                            title: buttonText,
-                            payload: "FOLLOW_CONFIRMED"
+                            title: branchButtonText,
+                            payload: branchPayload
                           }
                         ]
                       }
