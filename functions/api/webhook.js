@@ -356,7 +356,15 @@ export async function onRequestPost(context) {
               // SEGUIDOR CONFIRMADO: Envia o link final com segurança!
               let textToSend = state.finalLinkMessage;
               const payloadStr = typeof postbackPayload === 'string' ? postbackPayload : '';
-              const targetNodeId = payloadStr.includes(':') ? payloadStr.split(':')[1] : null;
+              let targetNodeId = payloadStr.includes(':') ? payloadStr.split(':')[1] : null;
+
+              // Botão antigo sem destino: LEGACY_TARGETS (KV) guarda quem comentou outra palavra antes da correção de 22/10/2026
+              if (!targetNodeId && env?.WEBFLOW_KV) {
+                try {
+                  const legacy = JSON.parse((await env.WEBFLOW_KV.get('LEGACY_TARGETS')) || '{}');
+                  if (legacy[senderId]) targetNodeId = legacy[senderId];
+                } catch (e) {}
+              }
 
               if (Array.isArray(state.flows)) {
                 for (const fl of state.flows) {

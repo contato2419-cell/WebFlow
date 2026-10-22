@@ -345,7 +345,7 @@ export async function onRequestPost(context) {
 
             // REGRA DE OURO 1: ANTI-DUPLICAÇÃO ABSOLUTA
             if (alreadyHasYgorReply) {
-              skipped.push({ commentId: comment.id, reelId: reel.id, user, reason: 'already_has_public_reply' });
+              skipped.push({ commentId: comment.id, reelId: reel.id, user, text, timestamp: comment.timestamp, reason: 'already_has_public_reply' });
               continue;
             }
 
