@@ -1,5 +1,6 @@
 // Cloudflare Pages Function: Sincronização Global do Estado da Automação (Backend KV com Dupla Camada)
 // Permite Ligar/Desligar instantaneamente a automação tanto no Frontend quanto no Webhook
+import { requirePanelKey } from '../../lib/panelAuth.js';
 
 const CF_ACCOUNT_ID = 'be7db94a293732762035a5c23126dfae';
 const CF_KV_ID = '6ffd8aa59e6a43ebaee8c87a7dd5ceb1';
@@ -21,7 +22,7 @@ const CORS_HEADERS = {
   'Content-Type': 'application/json',
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Headers': 'Content-Type, X-Panel-Key',
   'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0'
 };
 
@@ -127,6 +128,8 @@ export async function onRequestGet(context) {
 
 export async function onRequestPost(context) {
   const { request, env } = context;
+  const denied = await requirePanelKey(request, env);
+  if (denied) return denied;
 
   try {
     const body = await request.json().catch(() => ({}));

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { getSupabaseClient } from '../lib/supabase';
+import { panelFetch } from '../lib/panelKey';
 import { INITIAL_CONVERSATIONS, INITIAL_CONTACTS } from '../data/initialConversations';
 
 const AppContext = createContext();
@@ -458,11 +459,13 @@ export const AppProvider = ({ children }) => {
       }
       lastSyncedHashRef.current = payloadStr;
 
-      await fetch('/api/state', {
+      const res = await panelFetch('/api/state', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: payloadStr
       });
+      // Sem a senha do painel o servidor recusa: tenta de novo na próxima mudança
+      if (!res.ok) lastSyncedHashRef.current = '';
     } catch (e) {
       console.warn('Erro ao sincronizar com KV:', e);
     }
@@ -506,7 +509,7 @@ export const AppProvider = ({ children }) => {
       });
 
     // Sincroniza conversas reais da Meta API em background
-    fetch('/api/conversations', { cache: 'no-store' })
+    panelFetch('/api/conversations', { cache: 'no-store' })
       .then(r => r.json())
       .then(data => {
         if (data.success && data.conversations && data.conversations.length > 0) {

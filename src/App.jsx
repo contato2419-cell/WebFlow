@@ -15,6 +15,7 @@ import { SequencesView } from './components/Sequences/SequencesView';
 import { AiKnowledgeView } from './components/AI/AiKnowledgeView';
 import { FlowSimulatorModal } from './components/FlowBuilder/FlowSimulatorModal';
 import { AuthModal } from './components/Auth/AuthModal';
+import { PanelKeyModal } from './components/Auth/PanelKeyModal';
 import { MobileBottomNav } from './components/MobileBottomNav';
 
 export const App = () => {
@@ -73,6 +74,8 @@ export const App = () => {
       {authModalOpen && (
         <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} />
       )}
+
+      <PanelKeyModal />
     </div>
   );
 };

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { panelFetch } from '../../lib/panelKey';
 import { 
   MessagesSquare, 
   Send, 
@@ -208,7 +209,7 @@ export const LiveChatView = () => {
       const url = cursor 
         ? `/api/conversations?limit=50&after=${encodeURIComponent(cursor)}` 
         : '/api/conversations?limit=50';
-      const res = await fetch(url, { cache: 'no-store' });
+      const res = await panelFetch(url, { cache: 'no-store' });
       const data = await res.json();
       
       if (data.success && Array.isArray(data.conversations) && data.conversations.length > 0) {
@@ -256,7 +257,7 @@ export const LiveChatView = () => {
 
     // Dispara envio real via API da Meta direto pro Instagram do seguidor
     try {
-      await fetch('/api/conversations', {
+      await panelFetch('/api/conversations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ recipientId: activeConv.contactId, text: msgText })

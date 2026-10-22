@@ -1,6 +1,7 @@
 // Cloudflare Pages Function: Sincronização em Tempo Real da Caixa de Entrada da Meta (Instagram Direct)
 // REA: Paginação Dinâmica, Cache em Memória Anti-Rate-Limit, Horários Inteligentes (Hoje/Ontem/Data), Fotos Reais Garantidas
 import { getPageToken } from '../../lib/metaToken.js';
+import { requirePanelKey } from '../../lib/panelAuth.js';
 
 const PAGE_ID = '1299815346552748';
 
@@ -49,6 +50,8 @@ const USER_CACHE = new Map();
 
 export async function onRequestGet(context) {
   const { request, env } = context;
+  const denied = await requirePanelKey(request, env);
+  if (denied) return denied;
   const PAGE_TOKEN = await getPageToken(env);
 
   try {
@@ -195,6 +198,8 @@ export async function onRequestGet(context) {
 // Envio ao vivo de mensagem do atendente humano diretamente para o Instagram do seguidor
 export async function onRequestPost(context) {
   const { request, env } = context;
+  const denied = await requirePanelKey(request, env);
+  if (denied) return denied;
   const PAGE_TOKEN = await getPageToken(env);
 
   try {
