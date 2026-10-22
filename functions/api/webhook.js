@@ -133,8 +133,32 @@ export async function onRequestGet(context) {
   return new Response('Forbidden', { status: 403 });
 }
 
+// Confere se o evento veio mesmo da Meta: X-Hub-Signature-256 = "sha256=" + HMAC-SHA256(App Secret, corpo cru)
+async function hasValidMetaSignature(rawBody, signatureHeader, appSecret) {
+  if (!signatureHeader || !signatureHeader.startsWith('sha256=')) return false;
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(appSecret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const mac = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(rawBody));
+  const expected = 'sha256=' + [...new Uint8Array(mac)].map(b => b.toString(16).padStart(2, '0')).join('');
+  if (expected.length !== signatureHeader.length) return false;
+  let diff = 0;
+  for (let i = 0; i < expected.length; i++) diff |= expected.charCodeAt(i) ^ signatureHeader.charCodeAt(i);
+  return diff === 0;
+}
+
 export async function onRequestPost(context) {
   const { request, env } = context;
+
+  const rawBody = await request.text();
+  if (env.META_APP_SECRET) {
+    const valid = await hasValidMetaSignature(rawBody, request.headers.get('X-Hub-Signature-256'), env.META_APP_SECRET);
+    if (!valid) {
+      console.warn('[WebFlow Webhook] Assinatura da Meta inválida. Evento recusado.');
+      return new Response('INVALID_SIGNATURE', { status: 401 });
+    }
+  } else {
+    console.warn('[WebFlow Webhook] META_APP_SECRET não configurado: assinatura da Meta NÃO conferida.');
+  }
+
   const PAGE_TOKEN = await getPageToken(env);
   const MY_PAGE_ID = '1299815346552748';
   const MY_IG_ID = '17841428469294913';
@@ -153,7 +177,7 @@ export async function onRequestPost(context) {
       });
     }
 
-    const payload = await request.json();
+    const payload = JSON.parse(rawBody || '{}');
     if (!payload || (payload.object !== 'instagram' && payload.object !== 'page')) {
       return new Response('EVENT_RECEIVED', { status: 200 });
     }
