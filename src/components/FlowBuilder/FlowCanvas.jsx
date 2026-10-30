@@ -1318,6 +1318,66 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
                   )}
                 </div>
 
+                <div className="p-3 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 space-y-2">
+                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                    1ª Caixinha (botão Receber)
+                  </label>
+                  <p className="text-[10px] text-slate-500 leading-tight">
+                    Vai pra todo mundo. Quem já segue recebe a mensagem no clique; quem não segue vê a caixinha de seguir.
+                  </p>
+                  <div>
+                    <label className="text-[10px] text-slate-500 font-bold uppercase block mb-1">Título</label>
+                    <input
+                      type="text"
+                      maxLength={80}
+                      value={selectedNode.data?.receiveTitle ?? ''}
+                      placeholder="Tá aqui o que você pediu 👇"
+                      onChange={(e) => {
+                        const updatedNodes = currentFlow.nodes.map(n => n.id === selectedNode.id ? {
+                          ...n,
+                          data: { ...n.data, receiveTitle: e.target.value }
+                        } : n);
+                        updateFlow(currentFlow.id, { nodes: updatedNodes });
+                      }}
+                      className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-500 font-bold uppercase block mb-1">Texto</label>
+                    <input
+                      type="text"
+                      maxLength={80}
+                      value={selectedNode.data?.receiveText ?? ''}
+                      placeholder="Clica no botão abaixo pra receber"
+                      onChange={(e) => {
+                        const updatedNodes = currentFlow.nodes.map(n => n.id === selectedNode.id ? {
+                          ...n,
+                          data: { ...n.data, receiveText: e.target.value }
+                        } : n);
+                        updateFlow(currentFlow.id, { nodes: updatedNodes });
+                      }}
+                      className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-500 font-bold uppercase block mb-1">Botão</label>
+                    <input
+                      type="text"
+                      maxLength={20}
+                      value={selectedNode.data?.receiveButton ?? ''}
+                      placeholder="Receber"
+                      onChange={(e) => {
+                        const updatedNodes = currentFlow.nodes.map(n => n.id === selectedNode.id ? {
+                          ...n,
+                          data: { ...n.data, receiveButton: e.target.value }
+                        } : n);
+                        updateFlow(currentFlow.id, { nodes: updatedNodes });
+                      }}
+                      className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white"
+                    />
+                  </div>
+                </div>
+
                 <div>
                   <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
                     Lembrete Amigável (se clicar antes de seguir)

@@ -1,7 +1,7 @@
 // Cloudflare Pages Function: Webhook Oficial da Meta (Instagram Direct & Comentários)
 // REA: Arquitetura Estilo ManyChat com Trava Rigorosa de Seguidor, Kill-Switch Global e Zero Mensagens Não-Solicitadas
 import { getPageToken } from '../../lib/metaToken.js';
-import { allKeywords, resolveBranch, gateTargetNodeId, activeInstagramFlow } from '../../lib/flowRouting.js';
+import { allKeywords, resolveBranch, gateTargetNodeId, activeInstagramFlow, receiveCard, gateForTarget } from '../../lib/flowRouting.js';
 
 const PUBLIC_REPLIES = [
   "Acabei de te enviar no direct! Dá uma olhada 🚀",
@@ -205,14 +205,12 @@ export async function onRequestPost(context) {
 
             // Textos e destino do bloco de seguidor ligado à palavra-chave comentada
             const branch = resolveBranch(state, commentText, matchesKeyword);
-            const gateData = branch?.gate?.data || {};
-            const firstDmText = gateData.text || gateData.subtitle || state.firstDmSubtitle || state.firstDmText || "Tô postando vídeo assim toda semana! Clica no botão abaixo pra liberar o link 👇";
-            const rawTitle = gateData.title || state.firstDmTitle || "Só me seguir e clicar no botão pra min não tomar ban";
-            const firstDmTitle = rawTitle.length <= 80 ? rawTitle : rawTitle.slice(0, 80);
+            const card = receiveCard(branch);
+            const firstDmText = card.text;
+            const firstDmTitle = card.title.slice(0, 80);
             const firstDmSubtitle = smartMetaCardSubtitle(firstDmText);
-            const rawBtn = gateData.buttons?.[0]?.title || state.buttonText || "✅ Já estou seguindo";
-            const buttonText = formatMetaButtonTitle(rawBtn);
-            const followPayload = branch?.targetNodeId ? `FOLLOW_CONFIRMED:${branch.targetNodeId}` : "FOLLOW_CONFIRMED";
+            const buttonText = formatMetaButtonTitle(card.button);
+            const followPayload = card.payload;
 
             // Envia a Caixinha Interativa (Generic Template) com o botão nativo da Meta
             const caixinhaPayload = {
@@ -311,7 +309,8 @@ export async function onRequestPost(context) {
           const postbackPayload = msg.postback?.payload || msg.message?.quick_reply?.payload;
 
           // Detecta se o usuário clicou no botão "Já estou te seguindo!"
-          const isButtonClicked = postbackPayload === 'FOLLOW_CONFIRMED' || (typeof postbackPayload === 'string' && postbackPayload.startsWith('FOLLOW_CONFIRMED'));
+          const isReceiveClick = typeof postbackPayload === 'string' && postbackPayload.startsWith('RECEIVE');
+          const isButtonClicked = isReceiveClick || (typeof postbackPayload === 'string' && postbackPayload.startsWith('FOLLOW_CONFIRMED'));
 
           // Detecta se o usuário enviou a palavra-chave no direct
           const isExactKeyword = matchesKeyword(rawText, allKeywords(state));
@@ -327,11 +326,10 @@ export async function onRequestPost(context) {
           // Caso 1: Usuário enviou a palavra-chave no Direct (ex: "LISTA")
           if (isExactKeyword && !isButtonClicked) {
             const branch = resolveBranch(state, rawText, matchesKeyword);
-            const gateData = branch?.gate?.data || {};
-            const firstDmText = gateData.text || gateData.subtitle || state.firstDmSubtitle || state.firstDmText || "Tô postando vídeo assim toda semana! Clica no botão abaixo pra liberar o link 👇";
-            const rawBtn = gateData.buttons?.[0]?.title || state.buttonText || "✅ Já estou seguindo";
-            const buttonText = formatMetaButtonTitle(rawBtn);
-            const followPayload = branch?.targetNodeId ? `FOLLOW_CONFIRMED:${branch.targetNodeId}` : "FOLLOW_CONFIRMED";
+            const card = receiveCard(branch);
+            const firstDmText = card.text;
+            const buttonText = formatMetaButtonTitle(card.button);
+            const followPayload = card.payload;
 
             try {
               await fetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${PAGE_TOKEN}`, {
@@ -425,6 +423,43 @@ export async function onRequestPost(context) {
                 });
               } catch (e) {
                 console.error('Erro ao enviar link final no direct:', e);
+              }
+            } else if (isReceiveClick) {
+              // NÃO SEGUE e clicou em Receber: agora sim mostra a caixinha de seguir, com o destino da palavra-chave
+              const clickedTarget = postbackPayload.includes(':') ? postbackPayload.split(':')[1] : '';
+              const gateData = gateForTarget(state, clickedTarget)?.data || {};
+              const rawTitle = gateData.title || state.firstDmTitle || "Só me seguir e clicar no botão pra min não tomar ban";
+              try {
+                await fetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${PAGE_TOKEN}`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    recipient: { id: senderId },
+                    message: {
+                      attachment: {
+                        type: "template",
+                        payload: {
+                          template_type: "generic",
+                          elements: [
+                            {
+                              title: rawTitle.slice(0, 80),
+                              subtitle: smartMetaCardSubtitle(gateData.text || gateData.subtitle || state.firstDmSubtitle || state.firstDmText),
+                              buttons: [
+                                {
+                                  type: "postback",
+                                  title: formatMetaButtonTitle(gateData.buttons?.[0]?.title || state.buttonText),
+                                  payload: clickedTarget ? `FOLLOW_CONFIRMED:${clickedTarget}` : "FOLLOW_CONFIRMED"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  })
+                });
+              } catch (e) {
+                console.error('Erro ao enviar caixinha de seguir no direct:', e);
               }
             } else {
               // NÃO SEGUE: NÃO envia o link! Envia o lembrete educado com o botão para tentar de novo

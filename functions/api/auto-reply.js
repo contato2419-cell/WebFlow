@@ -1,7 +1,7 @@
 // Cloudflare Pages Function: Motor de Comentários em Background (Meta Graph API v21.0)
 // REA: Sincronizado com KV, Delay Humano Configurável, Anti-Duplicação e Zero Spam em DMs
 import { getPageToken } from '../../lib/metaToken.js';
-import { allKeywords, resolveBranch } from '../../lib/flowRouting.js';
+import { allKeywords, resolveBranch, receiveCard } from '../../lib/flowRouting.js';
 
 const PAGE_ID = '1299815346552748';
 const IG_USER_ID = '17841428469294913';
@@ -207,7 +207,7 @@ export async function onRequestPost(context) {
         previewText: text,
         keywordMatch: matchesKeyword(text, keyword),
         trigger: branch?.trigger?.data?.keyword || null,
-        payload: branch?.targetNodeId ? `FOLLOW_CONFIRMED:${branch.targetNodeId}` : 'FOLLOW_CONFIRMED',
+        payload: receiveCard(branch).payload,
         finalText: finalNode?.data?.text || null
       }), {
         status: 200,
@@ -375,19 +375,11 @@ export async function onRequestPost(context) {
             let branchPayload = "FOLLOW_CONFIRMED";
 
             const branch = resolveBranch({ ...state, flows: state.flows || body.flows }, text, matchesKeyword);
-            if (branch) {
-              const connectedGate = branch.gate;
-              const rawT = connectedGate.data?.title || branchTitle;
-              const rawSub = connectedGate.data?.text || connectedGate.data?.subtitle || branchSubtitle;
-              const rawB = connectedGate.data?.buttons?.[0]?.title || branchButtonText;
-
-              branchTitle = rawT.length <= 80 ? rawT : rawT.slice(0, 80);
-              branchSubtitle = smartMetaCardSubtitle(rawSub);
-              branchButtonText = formatMetaButtonTitle(rawB);
-              if (branch.targetNodeId) {
-                branchPayload = `FOLLOW_CONFIRMED:${branch.targetNodeId}`;
-              }
-            }
+            const card = receiveCard(branch);
+            branchTitle = card.title.slice(0, 80);
+            branchSubtitle = smartMetaCardSubtitle(card.text);
+            branchButtonText = formatMetaButtonTitle(card.button);
+            branchPayload = card.payload;
 
             // 1ª DM: Envia a Caixinha Interativa (Generic Template)
             const caixinhaPayload = {
