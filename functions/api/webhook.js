@@ -1,7 +1,7 @@
 // Cloudflare Pages Function: Webhook Oficial da Meta (Instagram Direct & Comentários)
 // REA: Arquitetura Estilo ManyChat com Trava Rigorosa de Seguidor, Kill-Switch Global e Zero Mensagens Não-Solicitadas
 import { getPageToken } from '../../lib/metaToken.js';
-import { allKeywords, resolveBranch, gateTargetNodeId, activeInstagramFlow, receiveCard, gateForTarget } from '../../lib/flowRouting.js';
+import { allKeywords, resolveBranch, gateTargetNodeId, activeInstagramFlow, gateForTarget, firstCard } from '../../lib/flowRouting.js';
 
 const PUBLIC_REPLIES = [
   "Acabei de te enviar no direct! Dá uma olhada 🚀",
@@ -205,7 +205,7 @@ export async function onRequestPost(context) {
 
             // Textos e destino do bloco de seguidor ligado à palavra-chave comentada
             const branch = resolveBranch(state, commentText, matchesKeyword);
-            const card = receiveCard(branch);
+            const card = await firstCard(branch, state, commentData.from?.id, PAGE_TOKEN);
             const firstDmText = card.text;
             const firstDmTitle = card.title.slice(0, 80);
             const firstDmSubtitle = smartMetaCardSubtitle(firstDmText);
@@ -326,7 +326,7 @@ export async function onRequestPost(context) {
           // Caso 1: Usuário enviou a palavra-chave no Direct (ex: "LISTA")
           if (isExactKeyword && !isButtonClicked) {
             const branch = resolveBranch(state, rawText, matchesKeyword);
-            const card = receiveCard(branch);
+            const card = await firstCard(branch, state, senderId, PAGE_TOKEN);
             const firstDmText = card.text;
             const buttonText = formatMetaButtonTitle(card.button);
             const followPayload = card.payload;

@@ -1,7 +1,7 @@
 // Cloudflare Pages Function: Motor de Comentários em Background (Meta Graph API v21.0)
 // REA: Sincronizado com KV, Delay Humano Configurável, Anti-Duplicação e Zero Spam em DMs
 import { getPageToken } from '../../lib/metaToken.js';
-import { allKeywords, resolveBranch, receiveCard } from '../../lib/flowRouting.js';
+import { allKeywords, resolveBranch, followCard, firstCard } from '../../lib/flowRouting.js';
 
 const PAGE_ID = '1299815346552748';
 const IG_USER_ID = '17841428469294913';
@@ -207,7 +207,7 @@ export async function onRequestPost(context) {
         previewText: text,
         keywordMatch: matchesKeyword(text, keyword),
         trigger: branch?.trigger?.data?.keyword || null,
-        payload: receiveCard(branch).payload,
+        payload: followCard(branch, state).payload,
         finalText: finalNode?.data?.text || null
       }), {
         status: 200,
@@ -375,7 +375,8 @@ export async function onRequestPost(context) {
             let branchPayload = "FOLLOW_CONFIRMED";
 
             const branch = resolveBranch({ ...state, flows: state.flows || body.flows }, text, matchesKeyword);
-            const card = receiveCard(branch);
+            subrequestBudget--;
+            const card = await firstCard(branch, state, comment.from?.id, PAGE_TOKEN);
             branchTitle = card.title.slice(0, 80);
             branchSubtitle = smartMetaCardSubtitle(card.text);
             branchButtonText = formatMetaButtonTitle(card.button);

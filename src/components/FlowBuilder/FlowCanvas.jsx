@@ -1323,7 +1323,7 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
                     1ª Caixinha (botão Receber)
                   </label>
                   <p className="text-[10px] text-slate-500 leading-tight">
-                    Vai pra todo mundo. Quem já segue recebe a mensagem no clique; quem não segue vê a caixinha de seguir.
+                    Vai só pra quem a Meta confirma que segue. Quem não segue, ou nunca falou com você, recebe a caixinha de seguir.
                   </p>
                   <div>
                     <label className="text-[10px] text-slate-500 font-bold uppercase block mb-1">Título</label>
