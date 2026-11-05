@@ -361,7 +361,10 @@ export async function onRequestPost(context) {
             // Nota Técnica Meta API: a consulta de is_user_follow_business em contas comerciais requer consentimento de perfil (OAuthException #230).
             // Se a Meta retornar erro de permissão ou true, consideramos o clique físico no botão como confirmação válida para não travar o lead em loop infinito!
             let isFollower = true;
-            try {
+            // Trava anti-ban (Exigir que siga desligado): clicou em Receber, recebe sem checar
+            const receiveTarget = isReceiveClick && postbackPayload.includes(':') ? postbackPayload.split(':')[1] : '';
+            const skipFollowCheck = isReceiveClick && gateForTarget(state, receiveTarget)?.data?.requireFollow === false;
+            if (!skipFollowCheck) try {
               const checkRes = await fetch(`https://graph.facebook.com/v21.0/${senderId}?fields=is_user_follow_business&access_token=${PAGE_TOKEN}`);
               const checkData = await checkRes.json();
               if (checkData && checkData.is_user_follow_business === false && !checkData.error) {

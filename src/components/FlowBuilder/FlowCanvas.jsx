@@ -1012,6 +1012,11 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
 
                   {node.type === 'follower_gate' && (
                     <div className="space-y-2">
+                      {node.data?.requireFollow === false && (
+                        <div className="px-2 py-1 rounded bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-[10px] text-amber-700 dark:text-amber-300 font-bold">
+                          🛡️ Trava anti-ban: só o botão Receber, entrega mesmo sem seguir
+                        </div>
+                      )}
                       <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 text-[10px] text-indigo-700 dark:text-indigo-300 font-bold">
                         <UserCheck className="w-3 h-3 text-indigo-600" />
                         <span>{node.data?.title || 'Me segue ai pra min te enviar ingrato(a) 🚀'}</span>
@@ -1244,6 +1249,27 @@ export const FlowCanvas = ({ onOpenSimulator }) => {
                     Entrega o link final quando a pessoa começar a seguir seu perfil. Comunicação 100% humanizada e sem jargões.
                   </p>
                 </div>
+
+                <label className="flex items-start gap-2.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedNode.data?.requireFollow !== false}
+                    onChange={(e) => {
+                      const updatedNodes = currentFlow.nodes.map(n => n.id === selectedNode.id ? {
+                        ...n,
+                        data: { ...n.data, requireFollow: e.target.checked }
+                      } : n);
+                      updateFlow(currentFlow.id, { nodes: updatedNodes });
+                    }}
+                    className="mt-0.5 w-4 h-4 accent-indigo-600"
+                  />
+                  <span className="space-y-0.5">
+                    <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">Exigir que a pessoa siga</span>
+                    <span className="text-[10px] text-slate-500 leading-tight block">
+                      Desligado: vira a trava anti-ban. Todo mundo recebe só o botão Receber e, ao clicar, recebe a mensagem mesmo sem seguir.
+                    </span>
+                  </span>
+                </label>
 
                 <div>
                   <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
